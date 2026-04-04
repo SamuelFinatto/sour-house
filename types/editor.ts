@@ -12,6 +12,10 @@ export type Tool =
 	| "outlet"
 	| "furniture"
 	| "annotation"
+	| "sink"
+	| "toilet"
+	| "shower"
+	| "bathtub"
 	| "measure";
 
 export interface Viewport {

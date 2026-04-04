@@ -6,7 +6,11 @@ export type Entity =
 	| LightEntity
 	| OutletEntity
 	| FurnitureEntity
-	| AnnotationEntity;
+	| AnnotationEntity
+	| SinkEntity
+	| ToiletEntity
+	| ShowerEntity
+	| BathtubEntity;
 
 export type EntityType =
 	| "wall"
@@ -16,7 +20,11 @@ export type EntityType =
 	| "light"
 	| "outlet"
 	| "furniture"
-	| "annotation";
+	| "annotation"
+	| "sink"
+	| "toilet"
+	| "shower"
+	| "bathtub";
 
 interface BaseEntity {
 	id: string;
@@ -98,4 +106,46 @@ export interface AnnotationEntity extends BaseEntity {
 	x: number;
 	y: number;
 	text: string;
+}
+
+export interface SinkEntity extends BaseEntity {
+	type: "sink";
+	layer: "plumbing";
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+	rotation: number;
+	label?: string;
+}
+
+export interface ToiletEntity extends BaseEntity {
+	type: "toilet";
+	layer: "plumbing";
+	x: number;
+	y: number;
+	rotation: number;
+	label?: string;
+}
+
+export interface ShowerEntity extends BaseEntity {
+	type: "shower";
+	layer: "plumbing";
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+	rotation: number;
+	label?: string;
+}
+
+export interface BathtubEntity extends BaseEntity {
+	type: "bathtub";
+	layer: "plumbing";
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+	rotation: number;
+	label?: string;
 }

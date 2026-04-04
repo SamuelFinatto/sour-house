@@ -53,7 +53,7 @@ docker run -d \
 ```yaml
 services:
   sour-house:
-    image: ghcr.io/<your-username>/sour-house:main
+    image: ghcr.io/deanshub/sour-house:main
     # or build locally:
     # build: .
     ports:
@@ -90,12 +90,12 @@ All data is plain JSON — back it up with `cp`, sync it with `rsync`, or versio
 
 ## Scripts
 
-| Command | Description |
-|---|---|
-| `bun run dev` | Start dev server |
-| `bun run build` | Production build |
-| `bun run start` | Start production server |
-| `bun run lint` | Check with Biome |
-| `bun run lint:fix` | Auto-fix with Biome |
-| `bun run test` | Run tests |
+| Command              | Description             |
+| -------------------- | ----------------------- |
+| `bun run dev`        | Start dev server        |
+| `bun run build`      | Production build        |
+| `bun run start`      | Start production server |
+| `bun run lint`       | Check with Biome        |
+| `bun run lint:fix`   | Auto-fix with Biome     |
+| `bun run test`       | Run tests               |
 | `bun run test:watch` | Run tests in watch mode |

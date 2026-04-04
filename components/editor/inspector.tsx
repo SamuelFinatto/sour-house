@@ -71,6 +71,20 @@ export function Inspector({ entity, onUpdate, onDelete }: InspectorProps) {
 						onUpdate={(u) => onUpdate(entity.id, u)}
 					/>
 				)}
+				{(entity.type === "sink" ||
+					entity.type === "shower" ||
+					entity.type === "bathtub") && (
+					<PlumbingFixtureFields
+						entity={entity as Entity & { width: number; height: number; rotation: number; label?: string }}
+						onUpdate={(u) => onUpdate(entity.id, u)}
+					/>
+				)}
+				{entity.type === "toilet" && (
+					<PlumbingPointFields
+						entity={entity}
+						onUpdate={(u) => onUpdate(entity.id, u)}
+					/>
+				)}
 				{(entity.type === "light" ||
 					entity.type === "outlet" ||
 					entity.type === "annotation") && (
@@ -279,5 +293,105 @@ function PointFields({
 				/>
 			</div>
 		</div>
+	);
+}
+
+function PlumbingFixtureFields({
+	entity,
+	onUpdate,
+}: {
+	entity: Entity & { width: number; height: number; rotation: number; label?: string };
+	onUpdate: (u: Partial<Entity>) => void;
+}) {
+	return (
+		<>
+			<div className="grid grid-cols-2 gap-2">
+				<div>
+					<Label className="text-xs">Width</Label>
+					<Input
+						type="number"
+						value={entity.width}
+						onChange={(e) => onUpdate({ width: Number(e.target.value) } as Partial<Entity>)}
+						className="h-7 text-xs"
+					/>
+				</div>
+				<div>
+					<Label className="text-xs">Height</Label>
+					<Input
+						type="number"
+						value={entity.height}
+						onChange={(e) => onUpdate({ height: Number(e.target.value) } as Partial<Entity>)}
+						className="h-7 text-xs"
+					/>
+				</div>
+			</div>
+			<div>
+				<Label className="text-xs">Rotation</Label>
+				<Input
+					type="number"
+					value={entity.rotation}
+					onChange={(e) => onUpdate({ rotation: Number(e.target.value) } as Partial<Entity>)}
+					className="h-7 text-xs"
+				/>
+			</div>
+			<div>
+				<Label className="text-xs">Label</Label>
+				<Input
+					value={entity.label ?? ""}
+					onChange={(e) => onUpdate({ label: e.target.value } as Partial<Entity>)}
+					className="h-7 text-xs"
+				/>
+			</div>
+		</>
+	);
+}
+
+function PlumbingPointFields({
+	entity,
+	onUpdate,
+}: {
+	entity: Entity & { x: number; y: number; rotation: number; label?: string };
+	onUpdate: (u: Partial<Entity>) => void;
+}) {
+	return (
+		<>
+			<div className="grid grid-cols-2 gap-2">
+				<div>
+					<Label className="text-xs">X</Label>
+					<Input
+						type="number"
+						value={entity.x}
+						onChange={(e) => onUpdate({ x: Number(e.target.value) } as Partial<Entity>)}
+						className="h-7 text-xs"
+					/>
+				</div>
+				<div>
+					<Label className="text-xs">Y</Label>
+					<Input
+						type="number"
+						value={entity.y}
+						onChange={(e) => onUpdate({ y: Number(e.target.value) } as Partial<Entity>)}
+						className="h-7 text-xs"
+					/>
+				</div>
+			</div>
+			<div>
+				<Label className="text-xs">Rotation</Label>
+				<Input
+					type="number"
+					value={entity.rotation}
+					onChange={(e) => onUpdate({ rotation: Number(e.target.value) } as Partial<Entity>)}
+					className="h-7 text-xs"
+				/>
+			</div>
+			<div>
+				<Label className="text-xs">Label</Label>
+				<Input
+					value={entity.label ?? ""}
+					onChange={(e) => onUpdate({ label: e.target.value } as Partial<Entity>)}
+					className="h-7 text-xs"
+				/>
+			</div>
+		</>
 	);
 }

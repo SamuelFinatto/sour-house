@@ -5,13 +5,17 @@ import type { Entity } from "@/types/entities";
 import type { LayerVisibility } from "@/types/floor";
 import {
 	Armchair,
+	Bath,
 	DoorOpen,
+	Droplets,
 	Lightbulb,
 	List,
 	MessageSquare,
 	Plug,
 	Ruler,
+	ShowerHead,
 	Square,
+	Toilet,
 } from "lucide-react";
 
 interface EntitiesPanelProps {
@@ -29,6 +33,10 @@ const typeIcons: Record<string, React.ReactNode> = {
 	light: <Lightbulb className="h-3 w-3" />,
 	outlet: <Plug className="h-3 w-3" />,
 	furniture: <Armchair className="h-3 w-3" />,
+	sink: <Droplets className="h-3 w-3" />,
+	toilet: <Toilet className="h-3 w-3" />,
+	shower: <ShowerHead className="h-3 w-3" />,
+	bathtub: <Bath className="h-3 w-3" />,
 	annotation: <MessageSquare className="h-3 w-3" />,
 };
 
@@ -50,6 +58,14 @@ function entityLabel(entity: Entity): string {
 			return entity.label || "Light";
 		case "outlet":
 			return entity.label || "Outlet";
+		case "sink":
+			return entity.label || "Sink";
+		case "toilet":
+			return entity.label || "Toilet";
+		case "shower":
+			return entity.label || "Shower";
+		case "bathtub":
+			return entity.label || "Bathtub";
 	}
 }
 

@@ -1,4 +1,5 @@
-import { SCHEMA_VERSION, createFloor } from "@/lib/storage";
+import { createFloor } from "@/lib/storage";
+import { APP_VERSION } from "@/lib/version";
 import type { NextRequest } from "next/server";
 
 export async function POST(
@@ -29,7 +30,7 @@ export async function POST(
 			notes: true,
 		},
 		entities: body.entities || [],
-		schemaVersion: SCHEMA_VERSION,
+		schemaVersion: APP_VERSION,
 	});
 
 	return Response.json(floor, { status: 201 });

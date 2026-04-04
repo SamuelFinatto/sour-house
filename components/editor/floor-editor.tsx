@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useEditor } from "@/hooks/use-editor";
 import { useFloor } from "@/hooks/use-floor";
+import { fitViewport } from "@/lib/geometry";
 import type { Entity } from "@/types/entities";
 import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
@@ -24,14 +25,24 @@ export function FloorEditor({ projectId, floorId }: FloorEditorProps) {
 	const { floor, isLoading, mutate } = useFloor(projectId, floorId);
 	const editor = useEditor();
 	const initializedRef = useRef(false);
+	const canvasContainerRef = useRef<HTMLDivElement>(null);
 
-	// Sync entities when floor data loads
+	// Sync entities when floor data loads and fit viewport
 	useEffect(() => {
 		if (floor && !initializedRef.current) {
 			initializedRef.current = true;
 			editor.loadEntities(floor.entities);
+
+			// Fit viewport to show all entities after a frame so the container is measured
+			requestAnimationFrame(() => {
+				const el = canvasContainerRef.current;
+				if (el && floor.entities.length > 0) {
+					const vp = fitViewport(floor.entities, el.clientWidth, el.clientHeight);
+					editor.setViewport(vp);
+				}
+			});
 		}
-	}, [floor, editor.loadEntities]);
+	}, [floor, editor.loadEntities, editor.setViewport]);
 
 	const handleSave = useCallback(async () => {
 		if (!floor) return;
@@ -62,6 +73,8 @@ export function FloorEditor({ projectId, floorId }: FloorEditorProps) {
 				e.preventDefault();
 				handleSave();
 			} else if (e.key === "Delete" || e.key === "Backspace") {
+				const tag = (e.target as HTMLElement)?.tagName;
+				if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
 				for (const id of editor.state.selectedEntityIds) {
 					editor.deleteEntity(id);
 				}
@@ -132,6 +145,7 @@ export function FloorEditor({ projectId, floorId }: FloorEditorProps) {
 			{/* Main area */}
 			<div className="flex flex-1 min-h-0">
 				{/* Canvas */}
+				<div ref={canvasContainerRef} className="flex-1 flex min-w-0">
 				<Canvas
 					entities={editor.entities}
 					viewport={editor.state.viewport}
@@ -146,6 +160,7 @@ export function FloorEditor({ projectId, floorId }: FloorEditorProps) {
 					onUpdateEntity={editor.updateEntity}
 					onSelectEntity={editor.selectEntity}
 				/>
+				</div>
 
 				{/* Right sidebar */}
 				<div className="w-56 border-l bg-background overflow-y-auto hidden md:block">

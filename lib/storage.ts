@@ -2,8 +2,7 @@ import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promise
 import { join } from "node:path";
 import type { Floor } from "@/types/floor";
 import type { Project, ProjectSummary } from "@/types/project";
-
-export const SCHEMA_VERSION = "1.0.0";
+import { APP_VERSION } from "./version";
 
 const DATA_DIR = process.env.DATA_DIR || join(process.cwd(), "homes");
 
@@ -78,7 +77,7 @@ export async function createProject(
 		...project,
 		createdAt: now,
 		updatedAt: now,
-		schemaVersion: SCHEMA_VERSION,
+		schemaVersion: APP_VERSION,
 	};
 
 	await atomicWrite(projectFilePath(project.id), full);
@@ -118,7 +117,7 @@ export async function createFloor(
 	floor: Floor,
 ): Promise<Floor> {
 	await ensureDir(floorsDir(projectId));
-	const full: Floor = { ...floor, schemaVersion: SCHEMA_VERSION };
+	const full: Floor = { ...floor, schemaVersion: APP_VERSION };
 	await atomicWrite(floorFilePath(projectId, floor.id), full);
 
 	// Add to project floor order

@@ -88,7 +88,11 @@ export function Canvas({
 		activeTool === "light" ||
 		activeTool === "outlet" ||
 		activeTool === "annotation" ||
-		activeTool === "furniture";
+		activeTool === "furniture" ||
+		activeTool === "sink" ||
+		activeTool === "toilet" ||
+		activeTool === "shower" ||
+		activeTool === "bathtub";
 
 	function finishDraw(start: { x: number; y: number }, end: { x: number; y: number }) {
 		if (activeTool === "wall") {
@@ -181,6 +185,48 @@ export function Canvas({
 				x: pt.x,
 				y: pt.y,
 				text: "Note",
+			});
+		} else if (activeTool === "sink") {
+			onAddEntity({
+				id: generateId(),
+				type: "sink",
+				layer: "plumbing",
+				x: pt.x,
+				y: pt.y,
+				width: 50,
+				height: 40,
+				rotation: 0,
+			});
+		} else if (activeTool === "toilet") {
+			onAddEntity({
+				id: generateId(),
+				type: "toilet",
+				layer: "plumbing",
+				x: pt.x,
+				y: pt.y,
+				rotation: 0,
+			});
+		} else if (activeTool === "shower") {
+			onAddEntity({
+				id: generateId(),
+				type: "shower",
+				layer: "plumbing",
+				x: pt.x,
+				y: pt.y,
+				width: 90,
+				height: 90,
+				rotation: 0,
+			});
+		} else if (activeTool === "bathtub") {
+			onAddEntity({
+				id: generateId(),
+				type: "bathtub",
+				layer: "plumbing",
+				x: pt.x,
+				y: pt.y,
+				width: 150,
+				height: 70,
+				rotation: 0,
 			});
 		} else {
 			onAddEntity({
@@ -668,6 +714,151 @@ function EntityRenderer({
 						fill="#333"
 					>
 						{entity.text}
+					</text>
+				</g>
+			);
+		case "sink":
+			return (
+				<g onMouseDown={onMouseDown} onClick={onClick} className="cursor-pointer"
+					transform={`rotate(${entity.rotation}, ${entity.x + entity.width / 2}, ${entity.y + entity.height / 2})`}
+				>
+					<rect
+						x={entity.x}
+						y={entity.y}
+						width={entity.width}
+						height={entity.height}
+						fill={isSelected ? SELECT_FILL : "#b3d9ff"}
+						stroke={isSelected ? SELECT_COLOR : "#4a90d9"}
+						strokeWidth={isSelected ? 2 : 1.5}
+						rx={4}
+					/>
+					<ellipse
+						cx={entity.x + entity.width / 2}
+						cy={entity.y + entity.height / 2}
+						rx={entity.width * 0.3}
+						ry={entity.height * 0.3}
+						fill="none"
+						stroke={isSelected ? SELECT_COLOR : "#4a90d9"}
+						strokeWidth={1}
+					/>
+					<text
+						x={entity.x + entity.width / 2}
+						y={entity.y + entity.height + 12}
+						textAnchor="middle"
+						fontSize={9}
+						fill="#555"
+					>
+						{entity.label || "Sink"}
+					</text>
+				</g>
+			);
+		case "toilet":
+			return (
+				<g onMouseDown={onMouseDown} onClick={onClick} className="cursor-pointer"
+					transform={`rotate(${entity.rotation}, ${entity.x}, ${entity.y})`}
+				>
+					{/* Tank */}
+					<rect
+						x={entity.x - 18}
+						y={entity.y - 25}
+						width={36}
+						height={15}
+						fill={isSelected ? SELECT_FILL : "#e0e0e0"}
+						stroke={isSelected ? SELECT_COLOR : "#999"}
+						strokeWidth={isSelected ? 2 : 1.5}
+						rx={3}
+					/>
+					{/* Bowl */}
+					<ellipse
+						cx={entity.x}
+						cy={entity.y}
+						rx={18}
+						ry={22}
+						fill={isSelected ? SELECT_FILL : "#f0f0f0"}
+						stroke={isSelected ? SELECT_COLOR : "#999"}
+						strokeWidth={isSelected ? 2 : 1.5}
+					/>
+					<text
+						x={entity.x}
+						y={entity.y + 35}
+						textAnchor="middle"
+						fontSize={9}
+						fill="#555"
+					>
+						{entity.label || "Toilet"}
+					</text>
+				</g>
+			);
+		case "shower":
+			return (
+				<g onMouseDown={onMouseDown} onClick={onClick} className="cursor-pointer"
+					transform={`rotate(${entity.rotation}, ${entity.x + entity.width / 2}, ${entity.y + entity.height / 2})`}
+				>
+					<rect
+						x={entity.x}
+						y={entity.y}
+						width={entity.width}
+						height={entity.height}
+						fill={isSelected ? SELECT_FILL : "#d4eaff"}
+						stroke={isSelected ? SELECT_COLOR : "#6ba3d6"}
+						strokeWidth={isSelected ? 2 : 1.5}
+						rx={2}
+						strokeDasharray="4 2"
+					/>
+					{/* Drain circle */}
+					<circle
+						cx={entity.x + entity.width / 2}
+						cy={entity.y + entity.height / 2}
+						r={6}
+						fill="none"
+						stroke={isSelected ? SELECT_COLOR : "#6ba3d6"}
+						strokeWidth={1}
+					/>
+					<text
+						x={entity.x + entity.width / 2}
+						y={entity.y + entity.height + 12}
+						textAnchor="middle"
+						fontSize={9}
+						fill="#555"
+					>
+						{entity.label || "Shower"}
+					</text>
+				</g>
+			);
+		case "bathtub":
+			return (
+				<g onMouseDown={onMouseDown} onClick={onClick} className="cursor-pointer"
+					transform={`rotate(${entity.rotation}, ${entity.x + entity.width / 2}, ${entity.y + entity.height / 2})`}
+				>
+					<rect
+						x={entity.x}
+						y={entity.y}
+						width={entity.width}
+						height={entity.height}
+						fill={isSelected ? SELECT_FILL : "#cce5ff"}
+						stroke={isSelected ? SELECT_COLOR : "#4a90d9"}
+						strokeWidth={isSelected ? 2 : 2}
+						rx={entity.height / 2}
+					/>
+					{/* Inner shape */}
+					<rect
+						x={entity.x + 5}
+						y={entity.y + 5}
+						width={entity.width - 10}
+						height={entity.height - 10}
+						fill="none"
+						stroke={isSelected ? SELECT_COLOR : "#4a90d9"}
+						strokeWidth={0.5}
+						rx={(entity.height - 10) / 2}
+					/>
+					<text
+						x={entity.x + entity.width / 2}
+						y={entity.y + entity.height + 12}
+						textAnchor="middle"
+						fontSize={9}
+						fill="#555"
+					>
+						{entity.label || "Bathtub"}
 					</text>
 				</g>
 			);
