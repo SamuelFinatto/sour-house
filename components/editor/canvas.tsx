@@ -68,6 +68,13 @@ export function Canvas({
 		originX: number;
 		originY: number;
 	} | null>(null);
+	// Room vertex dragging state
+	const [vertexDrag, setVertexDrag] = useState<{
+		entityId: string;
+		vertexIndex: number;
+		startX: number;
+		startY: number;
+	} | null>(null);
 
 	const DRAG_THRESHOLD = 5;
 
@@ -78,6 +85,7 @@ export function Canvas({
 		setDrawCurrent(null);
 		setDrawMode(null);
 		setDragEntity(null);
+		setVertexDrag(null);
 	}, [activeTool]);
 
 	const getCanvasPoint = useCallback(
@@ -309,6 +317,19 @@ export function Canvas({
 			return;
 		}
 
+		// Room vertex dragging
+		if (vertexDrag) {
+			const pt = getCanvasPoint(e);
+			const entity = entities.find((ent) => ent.id === vertexDrag.entityId);
+			if (entity?.type === "room") {
+				const newPolygon = entity.polygon.map((p, i) =>
+					i === vertexDrag.vertexIndex ? ([pt.x, pt.y] as [number, number]) : p,
+				);
+				onUpdateEntity(entity.id, { polygon: newPolygon } as Partial<Entity>);
+			}
+			return;
+		}
+
 		// Entity dragging
 		if (dragEntity) {
 			const pt = getCanvasPoint(e);
@@ -363,6 +384,12 @@ export function Canvas({
 	function handleMouseUp(e: React.MouseEvent) {
 		if (isPanning) {
 			setIsPanning(false);
+			return;
+		}
+
+		// Finish vertex drag
+		if (vertexDrag) {
+			setVertexDrag(null);
 			return;
 		}
 
@@ -540,6 +567,40 @@ export function Canvas({
 					/>
 				))}
 
+				{/* Room vertex handles */}
+				{activeTool === "select" &&
+					visibleEntities
+						.filter(
+							(e) =>
+								e.type === "room" && selectedEntityIds.includes(e.id),
+						)
+						.map((entity) =>
+							entity.type === "room"
+								? entity.polygon.map(([px, py], i) => (
+										<circle
+											key={`vtx-${entity.id}-${i}`}
+											cx={px}
+											cy={py}
+											r={5 / viewport.zoom}
+											fill="white"
+											stroke="#2563eb"
+											strokeWidth={1.5 / viewport.zoom}
+											className="cursor-move"
+											onMouseDown={(e) => {
+												e.stopPropagation();
+												const pt = getCanvasPoint(e);
+												setVertexDrag({
+													entityId: entity.id,
+													vertexIndex: i,
+													startX: pt.x,
+													startY: pt.y,
+												});
+											}}
+										/>
+									))
+								: null,
+						)}
+
 				{/* Draw preview */}
 				{drawStart && drawCurrent && activeTool === "wall" && (
 					<line
@@ -634,9 +695,10 @@ function EntityRenderer({
 			return (
 				<polygon
 					points={entity.polygon.map(([x, y]) => `${x},${y}`).join(" ")}
-					fill={isSelected ? SELECT_FILL : "#f0f0f0"}
+					fill={isSelected ? SELECT_FILL : "rgba(0, 0, 0, 0.04)"}
 					stroke={isSelected ? SELECT_COLOR : "#666"}
 					strokeWidth={isSelected ? 2 : 1}
+					strokeDasharray={isSelected ? "none" : "6 3"}
 					onMouseDown={onMouseDown}
 					onClick={onClick}
 					className="cursor-pointer"

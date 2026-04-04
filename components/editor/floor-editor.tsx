@@ -1,8 +1,6 @@
 "use client";
 
-import { Download, Save } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Canvas } from "@/components/editor/canvas";
 import { EntitiesPanel } from "@/components/editor/entities-panel";
@@ -12,17 +10,9 @@ import { LayersPanel } from "@/components/editor/layers-panel";
 import { SymbolLibrary } from "@/components/editor/symbol-library";
 import { Toolbar } from "@/components/editor/toolbar";
 import { UnderlayPanel } from "@/components/editor/underlay-panel";
-import { Button } from "@/components/ui/button";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { useEditor } from "@/hooks/use-editor";
 import { useFloor } from "@/hooks/use-floor";
-import { downloadPng, downloadSvg } from "@/lib/export";
 import { fitViewport } from "@/lib/geometry";
 import type { Entity } from "@/types/entities";
 import type { FloorUnderlay } from "@/types/floor";
@@ -37,12 +27,6 @@ export function FloorEditor({ projectId, floorId }: FloorEditorProps) {
 	const editor = useEditor();
 	const initializedRef = useRef(false);
 	const canvasContainerRef = useRef<HTMLDivElement>(null);
-	const [headerPortal, setHeaderPortal] = useState<HTMLElement | null>(null);
-
-	useEffect(() => {
-		const el = document.getElementById("floor-header-actions");
-		if (el) setHeaderPortal(el);
-	}, []);
 
 	// Sync entities when floor data loads and fit viewport
 	useEffect(() => {
@@ -100,7 +84,6 @@ export function FloorEditor({ projectId, floorId }: FloorEditorProps) {
 	const handleZoomChange = useCallback(
 		(newZoom: number) => {
 			const vp = editor.state.viewport;
-			// Zoom toward center of the canvas container
 			const el = canvasContainerRef.current;
 			const cx = el ? el.clientWidth / 2 : 0;
 			const cy = el ? el.clientHeight / 2 : 0;
@@ -121,44 +104,6 @@ export function FloorEditor({ projectId, floorId }: FloorEditorProps) {
 			);
 		}
 	}, [editor.entities, editor.setViewport]);
-
-	const handleExportSvg = useCallback(() => {
-		downloadSvg(
-			editor.entities,
-			editor.state.visibleLayers,
-			`${floor?.name ?? "floor"}.svg`,
-		);
-	}, [editor.entities, editor.state.visibleLayers, floor?.name]);
-
-	const handleExportPng = useCallback(async () => {
-		try {
-			await downloadPng(
-				editor.entities,
-				editor.state.visibleLayers,
-				`${floor?.name ?? "floor"}.png`,
-			);
-		} catch {
-			toast.error("Failed to export PNG");
-		}
-	}, [editor.entities, editor.state.visibleLayers, floor?.name]);
-
-	const handleExportJson = useCallback(() => {
-		if (!floor) return;
-		const data = { ...floor, entities: editor.entities };
-		const blob = new Blob([JSON.stringify(data, null, 2)], {
-			type: "application/json",
-		});
-		const url = URL.createObjectURL(blob);
-		const a = document.createElement("a");
-		a.href = url;
-		a.download = `${floor.name ?? "floor"}.json`;
-		document.body.appendChild(a);
-		a.click();
-		setTimeout(() => {
-			document.body.removeChild(a);
-			URL.revokeObjectURL(url);
-		}, 100);
-	}, [floor, editor.entities]);
 
 	const handleImportJson = useCallback(() => {
 		const input = document.createElement("input");
@@ -189,6 +134,13 @@ export function FloorEditor({ projectId, floorId }: FloorEditorProps) {
 	const handleSaveRef = useRef(handleSave);
 	handleSaveRef.current = handleSave;
 	const clipboardRef = useRef<Entity[]>([]);
+
+	// Listen for save events from the layout header
+	useEffect(() => {
+		const onSave = () => handleSaveRef.current();
+		window.addEventListener("floor-save", onSave);
+		return () => window.removeEventListener("floor-save", onSave);
+	}, []);
 
 	// Keyboard shortcuts — stable effect, no deps that change every render
 	useEffect(() => {
@@ -221,7 +173,6 @@ export function FloorEditor({ projectId, floorId }: FloorEditorProps) {
 						const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 						newIds.push(id);
 						const clone = { ...ent, id } as Entity;
-						// Offset pasted entities so they don't overlap
 						if ("x" in clone && "y" in clone) {
 							(clone as Entity & { x: number; y: number }).x += offset;
 							(clone as Entity & { x: number; y: number }).y += offset;
@@ -316,46 +267,8 @@ export function FloorEditor({ projectId, floorId }: FloorEditorProps) {
 		editor.state.selectedEntityIds.includes(e.id),
 	);
 
-	const headerActions = (
-		<div className="flex items-center gap-2">
-			<span className="text-xs text-muted-foreground">
-				({editor.entities.length} entities)
-			</span>
-			<DropdownMenu>
-				<DropdownMenuTrigger
-					render={
-						<Button variant="outline" size="sm">
-							<Download className="mr-2 h-3 w-3" />
-							Export
-						</Button>
-					}
-				/>
-				<DropdownMenuContent align="end">
-					<DropdownMenuItem onClick={handleExportSvg}>
-						Export SVG
-					</DropdownMenuItem>
-					<DropdownMenuItem onClick={handleExportPng}>
-						Export PNG
-					</DropdownMenuItem>
-					<DropdownMenuItem onClick={handleExportJson}>
-						Export JSON
-					</DropdownMenuItem>
-					<DropdownMenuItem onClick={handleImportJson}>
-						Import JSON
-					</DropdownMenuItem>
-				</DropdownMenuContent>
-			</DropdownMenu>
-			<Button variant="outline" size="sm" onClick={handleSave}>
-				<Save className="mr-2 h-3 w-3" />
-				Save
-			</Button>
-		</div>
-	);
-
 	return (
 		<>
-			{headerPortal && createPortal(headerActions, headerPortal)}
-
 			{/* Toolbar */}
 			<Toolbar
 				activeTool={editor.state.activeTool}

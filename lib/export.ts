@@ -127,6 +127,30 @@ export function downloadSvg(
 	triggerDownload(blob, filename);
 }
 
+export function printFloorPlan(
+	entities: Entity[],
+	visibleLayers: LayerVisibility,
+	title: string,
+) {
+	const { svg } = buildSvgString(entities, visibleLayers);
+	const html = `<!DOCTYPE html>
+<html><head><title>${title}</title><style>
+@media print { @page { margin: 1cm; } }
+body { margin: 0; display: flex; flex-direction: column; align-items: center; }
+h1 { font: 14pt sans-serif; margin: 8pt 0; }
+svg { max-width: 100%; height: auto; }
+</style></head><body>
+<h1>${title}</h1>
+${svg}
+<script>window.onafterprint=()=>window.close();window.print();</script>
+</body></html>`;
+	const win = window.open("", "_blank");
+	if (win) {
+		win.document.write(html);
+		win.document.close();
+	}
+}
+
 export async function downloadPng(
 	entities: Entity[],
 	visibleLayers: LayerVisibility,
