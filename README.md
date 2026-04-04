@@ -2,6 +2,8 @@
 
 A self-hosted, file-based house planning tool. Design floor plans with multiple projects, multiple floors per project, and layer-based editing — all backed by JSON files on disk.
 
+![Sour House - Floor Plan Editor](docs/screenshot.png)
+
 ## Features
 
 - Multiple projects and floors
