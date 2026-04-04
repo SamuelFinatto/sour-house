@@ -1,36 +1,101 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sour House
+
+A self-hosted, file-based house planning tool. Design floor plans with multiple projects, multiple floors per project, and layer-based editing — all backed by JSON files on disk.
+
+## Features
+
+- Multiple projects and floors
+- SVG-based 2D floor editor
+- Draw walls, rooms, doors, windows, lights, outlets, furniture, annotations
+- Layer visibility controls
+- Grid and snap-to-grid
+- Undo/redo
+- Inspector panel for editing entity properties
+- File-based storage (no database)
+- PWA support
+- Responsive design
 
 ## Getting Started
 
-First, run the development server:
+### Development
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+bun install
+bun run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Production
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+bun run build
+bun run start
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Docker
 
-## Learn More
+### Build
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+docker build -t sour-house .
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Run
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+docker run -d \
+  -p 3000:3000 \
+  -v /path/to/your/data:/data \
+  sour-house
+```
 
-## Deploy on Vercel
+### Docker Compose
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```yaml
+services:
+  sour-house:
+    image: ghcr.io/<your-username>/sour-house:main
+    # or build locally:
+    # build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/data
+    environment:
+      - DATA_DIR=/data
+    restart: unless-stopped
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Start with:
+
+```bash
+docker compose up -d
+```
+
+Project data is stored in the mounted volume at `/data`. Each project gets its own directory with a `project.json` and per-floor JSON files under `floors/`.
+
+## Data Structure
+
+```
+data/
+  my-house/
+    project.json
+    floors/
+      ground-floor.json
+      first-floor.json
+    assets/
+    exports/
+```
+
+All data is plain JSON — back it up with `cp`, sync it with `rsync`, or version it with `git`.
+
+## Scripts
+
+| Command | Description |
+|---|---|
+| `bun run dev` | Start dev server |
+| `bun run build` | Production build |
+| `bun run start` | Start production server |
+| `bun run lint` | Check with Biome |
+| `bun run lint:fix` | Auto-fix with Biome |
+| `bun run test` | Run tests |
+| `bun run test:watch` | Run tests in watch mode |
