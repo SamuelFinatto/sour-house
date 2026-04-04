@@ -105,11 +105,46 @@ export async function updateProject(
 	return updated;
 }
 
+export async function renameProject(
+	oldId: string,
+	newId: string,
+	newName: string,
+): Promise<Project> {
+	const oldDir = projectDir(oldId);
+	const newDir = projectDir(newId);
+	await rename(oldDir, newDir);
+	const existing = await getProject(newId);
+	const updated: Project = {
+		...existing,
+		id: newId,
+		name: newName,
+		updatedAt: new Date().toISOString(),
+	};
+	await atomicWrite(projectFilePath(newId), updated);
+	return updated;
+}
+
 export async function deleteProject(projectId: string): Promise<void> {
 	await rm(projectDir(projectId), { recursive: true, force: true });
 }
 
 // --- Floors ---
+
+export async function listFloors(
+	projectId: string,
+): Promise<{ id: string; name: string }[]> {
+	const project = await getProject(projectId);
+	const summaries: { id: string; name: string }[] = [];
+	for (const floorId of project.floorOrder) {
+		try {
+			const floor = await getFloor(projectId, floorId);
+			summaries.push({ id: floor.id, name: floor.name });
+		} catch {
+			summaries.push({ id: floorId, name: floorId });
+		}
+	}
+	return summaries;
+}
 
 export async function getFloor(
 	projectId: string,
@@ -146,6 +181,46 @@ export async function updateFloor(
 	await atomicWrite(floorFilePath(projectId, floorId), floor);
 	await updateProject(projectId, {}); // touch updatedAt
 	return floor;
+}
+
+export async function duplicateFloor(
+	projectId: string,
+	floorId: string,
+): Promise<Floor> {
+	const source = await getFloor(projectId, floorId);
+	const newId = `${floorId}-copy-${Date.now().toString(36)}`;
+	const newFloor: Floor = {
+		...source,
+		id: newId,
+		name: `${source.name} (copy)`,
+		entities: source.entities.map((e) => ({
+			...e,
+			id: `${e.id}-copy-${Math.random().toString(36).slice(2, 8)}`,
+		})),
+	};
+	return createFloor(projectId, newFloor);
+}
+
+export async function renameFloor(
+	projectId: string,
+	oldFloorId: string,
+	newFloorId: string,
+	newName: string,
+): Promise<Floor> {
+	const oldPath = floorFilePath(projectId, oldFloorId);
+	const newPath = floorFilePath(projectId, newFloorId);
+	await rename(oldPath, newPath);
+	const existing = await getFloor(projectId, newFloorId);
+	const updated: Floor = { ...existing, id: newFloorId, name: newName };
+	await atomicWrite(newPath, updated);
+	// Update floor order
+	const project = await getProject(projectId);
+	await updateProject(projectId, {
+		floorOrder: project.floorOrder.map((id) =>
+			id === oldFloorId ? newFloorId : id,
+		),
+	});
+	return updated;
 }
 
 export async function deleteFloor(

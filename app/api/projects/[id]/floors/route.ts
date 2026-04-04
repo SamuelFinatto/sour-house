@@ -1,6 +1,19 @@
 import type { NextRequest } from "next/server";
-import { createFloor } from "@/lib/storage";
+import { createFloor, listFloors } from "@/lib/storage";
 import { APP_VERSION } from "@/lib/version";
+
+export async function GET(
+	_req: NextRequest,
+	ctx: RouteContext<"/api/projects/[id]/floors">,
+) {
+	const { id } = await ctx.params;
+	try {
+		const floors = await listFloors(id);
+		return Response.json(floors);
+	} catch {
+		return Response.json({ error: "Project not found" }, { status: 404 });
+	}
+}
 
 export async function POST(
 	request: NextRequest,

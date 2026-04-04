@@ -3,6 +3,7 @@
 import {
 	ArrowLeft,
 	Check,
+	Copy,
 	Download,
 	Layers,
 	MapPin,
@@ -11,15 +12,18 @@ import {
 	X,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import useSWR from "swr";
 import { CreateFloorDialog } from "@/components/floor/create-floor-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProject } from "@/hooks/use-project";
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 interface FloorListProps {
 	projectId: string;
@@ -27,8 +31,13 @@ interface FloorListProps {
 
 export function FloorList({ projectId }: FloorListProps) {
 	const { project, isLoading, mutate } = useProject(projectId);
+	const { data: floors, mutate: mutateFloors } = useSWR<
+		{ id: string; name: string }[]
+	>(`/api/projects/${projectId}/floors`, fetcher);
+	const router = useRouter();
 	const [isRenaming, setIsRenaming] = useState(false);
 	const [renameValue, setRenameValue] = useState("");
+	const [deletingFloorId, setDeletingFloorId] = useState<string | null>(null);
 
 	async function handleCreateFloor(floor: {
 		id: string;
@@ -41,6 +50,7 @@ export function FloorList({ projectId }: FloorListProps) {
 			body: JSON.stringify(floor),
 		});
 		mutate();
+		mutateFloors();
 	}
 
 	async function handleDeleteFloor(floorId: string) {
@@ -48,17 +58,72 @@ export function FloorList({ projectId }: FloorListProps) {
 			method: "DELETE",
 		});
 		mutate();
+		mutateFloors();
+	}
+
+	const [renamingFloorId, setRenamingFloorId] = useState<string | null>(null);
+	const [floorRenameValue, setFloorRenameValue] = useState("");
+
+	async function handleRenameFloor(floorId: string) {
+		const name = floorRenameValue.trim();
+		if (!name) return;
+		const newId = name
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, "-")
+			.replace(/^-|-$/g, "");
+		if (!newId) return;
+		const res = await fetch(`/api/projects/${projectId}/floors/${floorId}`, {
+			method: "PUT",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ name, newId }),
+		});
+		if (!res.ok) {
+			toast.error("Failed to rename floor");
+			return;
+		}
+		setRenamingFloorId(null);
+		mutate();
+		mutateFloors();
+	}
+
+	async function handleDuplicateFloor(floorId: string) {
+		const res = await fetch(
+			`/api/projects/${projectId}/floors/${floorId}/duplicate`,
+			{ method: "POST" },
+		);
+		if (!res.ok) {
+			toast.error("Failed to duplicate floor");
+			return;
+		}
+		mutate();
+		mutateFloors();
+		toast.success("Floor duplicated");
 	}
 
 	async function handleRename() {
-		if (!renameValue.trim()) return;
-		await fetch(`/api/projects/${projectId}`, {
+		const name = renameValue.trim();
+		if (!name) return;
+		const newId = name
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, "-")
+			.replace(/^-|-$/g, "");
+		if (!newId) return;
+
+		const res = await fetch(`/api/projects/${projectId}`, {
 			method: "PUT",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ name: renameValue.trim() }),
+			body: JSON.stringify({ name, newId }),
 		});
+		if (!res.ok) {
+			toast.error("Failed to rename project");
+			return;
+		}
 		setIsRenaming(false);
-		mutate();
+		if (newId !== projectId) {
+			router.push(`/projects/${newId}`);
+		} else {
+			mutate();
+		}
 	}
 
 	async function handleExportProject() {
@@ -110,28 +175,34 @@ export function FloorList({ projectId }: FloorListProps) {
 				<div className="flex items-start justify-between">
 					<div className="space-y-1">
 						{isRenaming ? (
-							<div className="flex items-center gap-2">
-								<Input
+							<form
+								className="flex items-center gap-2"
+								onSubmit={(e) => {
+									e.preventDefault();
+									handleRename();
+								}}
+							>
+								<input
 									value={renameValue}
 									onChange={(e) => setRenameValue(e.target.value)}
 									onKeyDown={(e) => {
-										if (e.key === "Enter") handleRename();
 										if (e.key === "Escape") setIsRenaming(false);
 									}}
-									className="h-9 text-xl font-semibold w-64"
+									className="h-9 text-xl font-semibold w-64 rounded-lg border border-input bg-transparent px-2.5 py-1 outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
 									autoFocus
 								/>
-								<Button variant="ghost" size="icon-sm" onClick={handleRename}>
+								<Button variant="ghost" size="icon-sm" type="submit">
 									<Check className="h-4 w-4" />
 								</Button>
 								<Button
 									variant="ghost"
 									size="icon-sm"
+									type="button"
 									onClick={() => setIsRenaming(false)}
 								>
 									<X className="h-4 w-4" />
 								</Button>
-							</div>
+							</form>
 						) : (
 							<div className="flex items-center gap-2 group">
 								<h1 className="text-2xl font-semibold">{project.name}</h1>
@@ -173,45 +244,104 @@ export function FloorList({ projectId }: FloorListProps) {
 				</div>
 			) : (
 				<div className="space-y-3">
-					{project.floorOrder.map((floorId, index) => (
-						<Card key={floorId} className="group relative">
-							<Link
-								href={`/projects/${projectId}/floors/${floorId}`}
-								className="absolute inset-0 z-0"
-							/>
-							<CardHeader className="flex flex-row items-center justify-between space-y-0 py-4">
-								<div className="flex items-center gap-3">
-									<Badge variant="outline" className="tabular-nums">
-										L{index}
-									</Badge>
-									<CardTitle className="text-base">{floorId}</CardTitle>
-								</div>
-								<div className="relative z-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-									<Button
-										variant="ghost"
-										size="icon-sm"
-										render={
-											<Link href={`/projects/${projectId}/floors/${floorId}`} />
-										}
-									>
-										<Pencil className="h-4 w-4" />
-									</Button>
-									<Button
-										variant="ghost"
-										size="icon-sm"
-										onClick={(e) => {
+					{project.floorOrder.map((floorId, index) => {
+						const floorName =
+							floors?.find((f) => f.id === floorId)?.name ?? floorId;
+						return (
+							<div
+								key={floorId}
+								className="flex items-center rounded-xl border bg-card text-card-foreground ring-1 ring-foreground/10"
+							>
+								{renamingFloorId === floorId ? (
+									<form
+										className="flex flex-1 items-center gap-2 px-4 py-3"
+										onSubmit={(e) => {
 											e.preventDefault();
-											handleDeleteFloor(floorId);
+											handleRenameFloor(floorId);
 										}}
 									>
-										<Trash2 className="h-4 w-4" />
-									</Button>
-								</div>
-							</CardHeader>
-						</Card>
-					))}
+										<Badge variant="outline" className="tabular-nums">
+											L{index}
+										</Badge>
+										<input
+											value={floorRenameValue}
+											onChange={(e) => setFloorRenameValue(e.target.value)}
+											onKeyDown={(e) => {
+												if (e.key === "Escape") setRenamingFloorId(null);
+											}}
+											className="h-7 text-sm flex-1 rounded-lg border border-input bg-transparent px-2.5 py-1 outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+											autoFocus
+										/>
+										<Button variant="ghost" size="icon-sm" type="submit">
+											<Check className="h-4 w-4" />
+										</Button>
+										<Button
+											variant="ghost"
+											size="icon-sm"
+											type="button"
+											onClick={() => setRenamingFloorId(null)}
+										>
+											<X className="h-4 w-4" />
+										</Button>
+									</form>
+								) : (
+									<Link
+										href={`/projects/${projectId}/floors/${floorId}`}
+										className="flex flex-1 items-center gap-3 px-4 py-4 min-w-0 hover:bg-muted/50 rounded-l-xl transition-colors"
+									>
+										<Badge variant="outline" className="tabular-nums">
+											L{index}
+										</Badge>
+										<span className="text-base font-medium">{floorName}</span>
+									</Link>
+								)}
+								{renamingFloorId !== floorId && (
+									<div className="flex items-center gap-1 px-2">
+										<Button
+											variant="ghost"
+											size="icon-sm"
+											onClick={() => {
+												setFloorRenameValue(floorName);
+												setRenamingFloorId(floorId);
+											}}
+											title="Rename floor"
+										>
+											<Pencil className="h-4 w-4" />
+										</Button>
+										<Button
+											variant="ghost"
+											size="icon-sm"
+											onClick={() => handleDuplicateFloor(floorId)}
+											title="Duplicate floor"
+										>
+											<Copy className="h-4 w-4" />
+										</Button>
+										<Button
+											variant="ghost"
+											size="icon-sm"
+											onClick={() => setDeletingFloorId(floorId)}
+											title="Delete floor"
+										>
+											<Trash2 className="h-4 w-4" />
+										</Button>
+									</div>
+								)}
+							</div>
+						);
+					})}
 				</div>
 			)}
+			<ConfirmDialog
+				title="Delete floor"
+				description="Are you sure you want to delete this floor? This action cannot be undone."
+				open={deletingFloorId !== null}
+				onOpenChange={(open) => {
+					if (!open) setDeletingFloorId(null);
+				}}
+				onConfirm={() => {
+					if (deletingFloorId) return handleDeleteFloor(deletingFloorId);
+				}}
+			/>
 		</div>
 	);
 }

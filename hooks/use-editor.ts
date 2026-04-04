@@ -151,6 +151,22 @@ export function useEditor(initialEntities: Entity[] = []) {
 		[entities, updateEntities],
 	);
 
+	const moveEntity = useCallback(
+		(id: string, direction: "up" | "down") => {
+			const idx = entities.findIndex((e) => e.id === id);
+			if (idx === -1) return;
+			const newIdx = direction === "up" ? idx - 1 : idx + 1;
+			if (newIdx < 0 || newIdx >= entities.length) return;
+			const newEntities = [...entities];
+			[newEntities[idx], newEntities[newIdx]] = [
+				newEntities[newIdx],
+				newEntities[idx],
+			];
+			updateEntities(newEntities);
+		},
+		[entities, updateEntities],
+	);
+
 	const toggleGrid = useCallback(() => {
 		setState((s) => ({ ...s, gridEnabled: !s.gridEnabled }));
 	}, []);
@@ -172,6 +188,7 @@ export function useEditor(initialEntities: Entity[] = []) {
 		addEntity,
 		updateEntity,
 		deleteEntity,
+		moveEntity,
 		toggleGrid,
 		toggleSnap,
 		undo,

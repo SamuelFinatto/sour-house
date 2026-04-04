@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { deleteFloor, getFloor, updateFloor } from "@/lib/storage";
+import { deleteFloor, getFloor, renameFloor, updateFloor } from "@/lib/storage";
 
 export async function GET(
 	_req: NextRequest,
@@ -22,7 +22,12 @@ export async function PUT(
 	const body = await request.json();
 
 	try {
-		const updated = await updateFloor(id, floorId, body);
+		if (body.newId) {
+			const updated = await renameFloor(id, floorId, body.newId, body.name);
+			return Response.json(updated);
+		}
+		const existing = await getFloor(id, floorId);
+		const updated = await updateFloor(id, floorId, { ...existing, ...body });
 		return Response.json(updated);
 	} catch {
 		return Response.json({ error: "Floor not found" }, { status: 404 });

@@ -21,6 +21,7 @@ import { useEditor } from "@/hooks/use-editor";
 import { useFloor } from "@/hooks/use-floor";
 import { downloadPng, downloadSvg } from "@/lib/export";
 import { fitViewport } from "@/lib/geometry";
+import type { Entity } from "@/types/entities";
 
 interface FloorEditorProps {
 	projectId: string;
@@ -156,31 +157,111 @@ export function FloorEditor({ projectId, floorId }: FloorEditorProps) {
 		input.click();
 	}, [editor.loadEntities]);
 
-	// Keyboard shortcuts
+	// Keep refs to avoid stale closures in keyboard handler
+	const editorRef = useRef(editor);
+	editorRef.current = editor;
+	const handleSaveRef = useRef(handleSave);
+	handleSaveRef.current = handleSave;
+	const clipboardRef = useRef<Entity[]>([]);
+
+	// Keyboard shortcuts — stable effect, no deps that change every render
 	useEffect(() => {
 		function handleKeyDown(e: KeyboardEvent) {
+			const tag = (e.target as HTMLElement)?.tagName;
+			const inInput = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+			const ed = editorRef.current;
+
 			if (e.key === "z" && (e.metaKey || e.ctrlKey) && e.shiftKey) {
 				e.preventDefault();
-				editor.redo();
+				ed.redo();
 			} else if (e.key === "z" && (e.metaKey || e.ctrlKey)) {
 				e.preventDefault();
-				editor.undo();
+				ed.undo();
 			} else if (e.key === "s" && (e.metaKey || e.ctrlKey)) {
 				e.preventDefault();
-				handleSave();
-			} else if (e.key === "Delete" || e.key === "Backspace") {
-				const tag = (e.target as HTMLElement)?.tagName;
-				if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
-				for (const id of editor.state.selectedEntityIds) {
-					editor.deleteEntity(id);
+				handleSaveRef.current();
+			} else if (e.key === "c" && (e.metaKey || e.ctrlKey) && !inInput) {
+				const selected = ed.entities.filter((ent) =>
+					ed.state.selectedEntityIds.includes(ent.id),
+				);
+				if (selected.length > 0) {
+					clipboardRef.current = selected;
+				}
+			} else if (e.key === "v" && (e.metaKey || e.ctrlKey) && !inInput) {
+				if (clipboardRef.current.length > 0) {
+					const offset = 20;
+					const newIds: string[] = [];
+					for (const ent of clipboardRef.current) {
+						const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+						newIds.push(id);
+						const clone = { ...ent, id } as Entity;
+						// Offset pasted entities so they don't overlap
+						if ("x" in clone && "y" in clone) {
+							(clone as Entity & { x: number; y: number }).x += offset;
+							(clone as Entity & { x: number; y: number }).y += offset;
+						}
+						if (clone.type === "wall") {
+							clone.x1 += offset;
+							clone.y1 += offset;
+							clone.x2 += offset;
+							clone.y2 += offset;
+						}
+						if (clone.type === "room") {
+							clone.polygon = clone.polygon.map(([px, py]) => [
+								px + offset,
+								py + offset,
+							]);
+						}
+						ed.addEntity(clone);
+					}
+					ed.selectEntity(newIds[0]);
+				}
+			} else if ((e.key === "Delete" || e.key === "Backspace") && !inInput) {
+				for (const id of ed.state.selectedEntityIds) {
+					ed.deleteEntity(id);
+				}
+			} else if (
+				(e.key === "ArrowUp" ||
+					e.key === "ArrowDown" ||
+					e.key === "ArrowLeft" ||
+					e.key === "ArrowRight") &&
+				!inInput &&
+				ed.state.selectedEntityIds.length > 0
+			) {
+				e.preventDefault();
+				const step = e.shiftKey ? 10 : 1;
+				const dx =
+					e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0;
+				const dy =
+					e.key === "ArrowUp" ? -step : e.key === "ArrowDown" ? step : 0;
+				for (const id of ed.state.selectedEntityIds) {
+					const ent = ed.entities.find((en) => en.id === id);
+					if (!ent) continue;
+					if (ent.type === "wall") {
+						ed.updateEntity(id, {
+							x1: ent.x1 + dx,
+							y1: ent.y1 + dy,
+							x2: ent.x2 + dx,
+							y2: ent.y2 + dy,
+						} as Partial<Entity>);
+					} else if (ent.type === "room") {
+						ed.updateEntity(id, {
+							polygon: ent.polygon.map(([px, py]) => [px + dx, py + dy]),
+						} as Partial<Entity>);
+					} else if ("x" in ent && "y" in ent) {
+						ed.updateEntity(id, {
+							x: (ent as Entity & { x: number }).x + dx,
+							y: (ent as Entity & { y: number }).y + dy,
+						} as Partial<Entity>);
+					}
 				}
 			} else if (e.key === "Escape") {
-				editor.setTool("select");
+				ed.setTool("select");
 			}
 		}
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [editor, handleSave]);
+	}, []);
 
 	if (isLoading) {
 		return (
@@ -305,6 +386,7 @@ export function FloorEditor({ projectId, floorId }: FloorEditorProps) {
 						visibleLayers={editor.state.visibleLayers}
 						selectedEntityIds={editor.state.selectedEntityIds}
 						onSelect={editor.selectEntity}
+						onMove={editor.moveEntity}
 					/>
 				</div>
 			</div>

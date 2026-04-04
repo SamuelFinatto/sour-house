@@ -3,6 +3,8 @@
 import {
 	Armchair,
 	Bath,
+	ChevronDown,
+	ChevronUp,
 	DoorOpen,
 	Droplets,
 	Lightbulb,
@@ -23,6 +25,7 @@ interface EntitiesPanelProps {
 	visibleLayers: LayerVisibility;
 	selectedEntityIds: string[];
 	onSelect: (id: string | null) => void;
+	onMove: (id: string, direction: "up" | "down") => void;
 }
 
 const typeIcons: Record<string, React.ReactNode> = {
@@ -74,6 +77,7 @@ export function EntitiesPanel({
 	visibleLayers,
 	selectedEntityIds,
 	onSelect,
+	onMove,
 }: EntitiesPanelProps) {
 	const visibleEntities = entities.filter(
 		(e) => visibleLayers[e.layer as keyof LayerVisibility],
@@ -89,25 +93,49 @@ export function EntitiesPanel({
 				<p className="text-xs text-muted-foreground">No entities</p>
 			) : (
 				<div className="space-y-0.5 max-h-60 overflow-y-auto">
-					{visibleEntities.map((entity) => (
-						<Button
-							key={entity.id}
-							variant={
-								selectedEntityIds.includes(entity.id) ? "secondary" : "ghost"
-							}
-							size="sm"
-							className="w-full justify-start gap-2 h-7"
-							onClick={() => onSelect(entity.id)}
-						>
-							{typeIcons[entity.type]}
-							<span className="flex-1 text-left text-xs truncate">
-								{entityLabel(entity)}
-							</span>
-							<span className="text-[10px] text-muted-foreground capitalize">
-								{entity.layer}
-							</span>
-						</Button>
-					))}
+					{visibleEntities.map((entity, index) => {
+						const isSelected = selectedEntityIds.includes(entity.id);
+						return (
+							<div key={entity.id} className="flex items-center gap-0.5">
+								<Button
+									variant={isSelected ? "secondary" : "ghost"}
+									size="sm"
+									className="flex-1 justify-start gap-2 h-7 min-w-0"
+									onClick={() => onSelect(entity.id)}
+								>
+									{typeIcons[entity.type]}
+									<span className="flex-1 text-left text-xs truncate">
+										{entityLabel(entity)}
+									</span>
+									<span className="text-[10px] text-muted-foreground capitalize">
+										{entity.layer}
+									</span>
+								</Button>
+								{isSelected && (
+									<div className="flex flex-col">
+										<button
+											type="button"
+											className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+											disabled={index === 0}
+											onClick={() => onMove(entity.id, "up")}
+											title="Move up"
+										>
+											<ChevronUp className="h-3 w-3" />
+										</button>
+										<button
+											type="button"
+											className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+											disabled={index === visibleEntities.length - 1}
+											onClick={() => onMove(entity.id, "down")}
+											title="Move down"
+										>
+											<ChevronDown className="h-3 w-3" />
+										</button>
+									</div>
+								)}
+							</div>
+						);
+					})}
 				</div>
 			)}
 		</div>

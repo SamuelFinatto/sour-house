@@ -2,9 +2,11 @@
 
 import { Layers, MapPin, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { ProjectSummary } from "@/types/project";
 
 interface ProjectCardProps {
@@ -13,6 +15,8 @@ interface ProjectCardProps {
 }
 
 export function ProjectCard({ project, onDelete }: ProjectCardProps) {
+	const [confirmOpen, setConfirmOpen] = useState(false);
+
 	return (
 		<Card className="group relative">
 			<Link href={`/projects/${project.id}`} className="absolute inset-0 z-0" />
@@ -32,7 +36,7 @@ export function ProjectCard({ project, onDelete }: ProjectCardProps) {
 					className="relative z-10 opacity-0 group-hover:opacity-100 transition-opacity"
 					onClick={(e) => {
 						e.preventDefault();
-						onDelete(project.id);
+						setConfirmOpen(true);
 					}}
 				>
 					<Trash2 className="h-4 w-4" />
@@ -49,6 +53,13 @@ export function ProjectCard({ project, onDelete }: ProjectCardProps) {
 					</span>
 				</div>
 			</CardContent>
+			<ConfirmDialog
+				title="Delete project"
+				description={`Are you sure you want to delete "${project.name}"? All floors and data will be permanently removed.`}
+				open={confirmOpen}
+				onOpenChange={setConfirmOpen}
+				onConfirm={() => onDelete(project.id)}
+			/>
 		</Card>
 	);
 }

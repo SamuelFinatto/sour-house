@@ -20,7 +20,8 @@
 				"noSvgWithoutTitle": "off",
 				"useKeyWithClickEvents": "off",
 				"noStaticElementInteractions": "off",
-				"noLabelWithoutControl": "off"
+				"noLabelWithoutControl": "off",
+				"noAutofocus": "off"
 			},
 			"style": {
 				"noNonNullAssertion": "off"

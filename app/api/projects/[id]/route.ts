@@ -1,5 +1,10 @@
 import type { NextRequest } from "next/server";
-import { deleteProject, getProject, updateProject } from "@/lib/storage";
+import {
+	deleteProject,
+	getProject,
+	renameProject,
+	updateProject,
+} from "@/lib/storage";
 
 export async function GET(
 	_req: NextRequest,
@@ -22,6 +27,10 @@ export async function PUT(
 	const body = await request.json();
 
 	try {
+		if (body.newId) {
+			const updated = await renameProject(id, body.newId, body.name);
+			return Response.json(updated);
+		}
 		const updated = await updateProject(id, body);
 		return Response.json(updated);
 	} catch {
