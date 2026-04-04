@@ -15,9 +15,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-	title: "Sour House",
+	title: {
+		default: "Sour House",
+		template: "%s | Sour House",
+	},
 	description: "Self-hosted house planning tool",
 	manifest: "/manifest.json",
+	icons: {
+		icon: [
+			{ url: "/icon.svg", type: "image/svg+xml" },
+			{ url: "/favicon.ico", sizes: "any" },
+		],
+		apple: "/icon-192.png",
+	},
 	appleWebApp: {
 		capable: true,
 		statusBarStyle: "default",
