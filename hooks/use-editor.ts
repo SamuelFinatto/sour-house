@@ -129,6 +129,14 @@ export function useEditor(initialEntities: Entity[] = []) {
 		[entities, updateEntities],
 	);
 
+	const addEntities = useCallback(
+		(newItems: Entity[]) => {
+			const newEntities = [...entities, ...newItems];
+			updateEntities(newEntities);
+		},
+		[entities, updateEntities],
+	);
+
 	const updateEntity = useCallback(
 		(id: string, updates: Partial<Entity>) => {
 			const newEntities = entities.map((e) =>
@@ -186,6 +194,7 @@ export function useEditor(initialEntities: Entity[] = []) {
 		hideAllLayers,
 		selectEntity,
 		addEntity,
+		addEntities,
 		updateEntity,
 		deleteEntity,
 		moveEntity,

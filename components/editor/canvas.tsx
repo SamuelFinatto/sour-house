@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { generateId, screenToCanvas, snapToGrid } from "@/lib/geometry";
 import type { Tool, Viewport } from "@/types/editor";
 import type { Entity } from "@/types/entities";
-import type { LayerVisibility } from "@/types/floor";
+import type { FloorUnderlay, LayerVisibility } from "@/types/floor";
 
 interface CanvasProps {
 	entities: Entity[];
@@ -15,6 +15,8 @@ interface CanvasProps {
 	snapEnabled: boolean;
 	gridSize: number;
 	selectedEntityIds: string[];
+	underlay?: FloorUnderlay;
+	underlayUrl?: string;
 	onViewportChange: (viewport: Viewport) => void;
 	onAddEntity: (entity: Entity) => void;
 	onUpdateEntity: (id: string, updates: Partial<Entity>) => void;
@@ -32,6 +34,8 @@ export function Canvas({
 	snapEnabled,
 	gridSize,
 	selectedEntityIds,
+	underlay,
+	underlayUrl,
 	onViewportChange,
 	onAddEntity,
 	onUpdateEntity,
@@ -478,6 +482,19 @@ export function Canvas({
 			<g
 				transform={`translate(${viewport.x}, ${viewport.y}) scale(${viewport.zoom})`}
 			>
+				{/* Blueprint underlay */}
+				{underlay && underlayUrl && (
+					<image
+						href={underlayUrl}
+						x={underlay.x}
+						y={underlay.y}
+						width={underlay.width}
+						height={underlay.height}
+						opacity={underlay.opacity}
+						preserveAspectRatio="none"
+					/>
+				)}
+
 				{/* Grid */}
 				{gridEnabled && (
 					<g opacity={0.15}>

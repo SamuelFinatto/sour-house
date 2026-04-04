@@ -1,14 +1,17 @@
 "use client";
 
-import { ArrowLeft, Download, Save } from "lucide-react";
-import Link from "next/link";
-import { useCallback, useEffect, useRef } from "react";
+import { Download, Save } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { Canvas } from "@/components/editor/canvas";
 import { EntitiesPanel } from "@/components/editor/entities-panel";
+import { HistoryPanel } from "@/components/editor/history-panel";
 import { Inspector } from "@/components/editor/inspector";
 import { LayersPanel } from "@/components/editor/layers-panel";
+import { SymbolLibrary } from "@/components/editor/symbol-library";
 import { Toolbar } from "@/components/editor/toolbar";
+import { UnderlayPanel } from "@/components/editor/underlay-panel";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -22,6 +25,7 @@ import { useFloor } from "@/hooks/use-floor";
 import { downloadPng, downloadSvg } from "@/lib/export";
 import { fitViewport } from "@/lib/geometry";
 import type { Entity } from "@/types/entities";
+import type { FloorUnderlay } from "@/types/floor";
 
 interface FloorEditorProps {
 	projectId: string;
@@ -33,6 +37,12 @@ export function FloorEditor({ projectId, floorId }: FloorEditorProps) {
 	const editor = useEditor();
 	const initializedRef = useRef(false);
 	const canvasContainerRef = useRef<HTMLDivElement>(null);
+	const [headerPortal, setHeaderPortal] = useState<HTMLElement | null>(null);
+
+	useEffect(() => {
+		const el = document.getElementById("floor-header-actions");
+		if (el) setHeaderPortal(el);
+	}, []);
 
 	// Sync entities when floor data loads and fit viewport
 	useEffect(() => {
@@ -54,6 +64,22 @@ export function FloorEditor({ projectId, floorId }: FloorEditorProps) {
 			});
 		}
 	}, [floor, editor.loadEntities, editor.setViewport]);
+
+	const handleUnderlayUpdate = useCallback(
+		(underlay: FloorUnderlay | undefined) => {
+			if (!floor) return;
+			const updated = { ...floor, entities: editor.entities, underlay };
+			fetch(`/api/projects/${projectId}/floors/${floorId}`, {
+				method: "PUT",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(updated),
+			}).then((res) => {
+				if (res.ok) mutate();
+				else toast.error("Failed to update underlay");
+			});
+		},
+		[floor, projectId, floorId, editor.entities, mutate],
+	);
 
 	const handleSave = useCallback(async () => {
 		if (!floor) return;
@@ -286,50 +312,49 @@ export function FloorEditor({ projectId, floorId }: FloorEditorProps) {
 				) ?? null)
 			: null;
 
+	const selectedEntities = editor.entities.filter((e) =>
+		editor.state.selectedEntityIds.includes(e.id),
+	);
+
+	const headerActions = (
+		<div className="flex items-center gap-2">
+			<span className="text-xs text-muted-foreground">
+				({editor.entities.length} entities)
+			</span>
+			<DropdownMenu>
+				<DropdownMenuTrigger
+					render={
+						<Button variant="outline" size="sm">
+							<Download className="mr-2 h-3 w-3" />
+							Export
+						</Button>
+					}
+				/>
+				<DropdownMenuContent align="end">
+					<DropdownMenuItem onClick={handleExportSvg}>
+						Export SVG
+					</DropdownMenuItem>
+					<DropdownMenuItem onClick={handleExportPng}>
+						Export PNG
+					</DropdownMenuItem>
+					<DropdownMenuItem onClick={handleExportJson}>
+						Export JSON
+					</DropdownMenuItem>
+					<DropdownMenuItem onClick={handleImportJson}>
+						Import JSON
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
+			<Button variant="outline" size="sm" onClick={handleSave}>
+				<Save className="mr-2 h-3 w-3" />
+				Save
+			</Button>
+		</div>
+	);
+
 	return (
-		<div className="flex flex-col flex-1 h-full">
-			{/* Header */}
-			<div className="flex items-center gap-2 px-3 py-2 border-b bg-background">
-				<Link
-					href={`/projects/${projectId}`}
-					className="text-muted-foreground hover:text-foreground"
-				>
-					<ArrowLeft className="h-4 w-4" />
-				</Link>
-				<span className="text-sm font-medium">{floor.name}</span>
-				<span className="text-xs text-muted-foreground">
-					({editor.entities.length} entities)
-				</span>
-				<div className="flex-1" />
-				<DropdownMenu>
-					<DropdownMenuTrigger
-						render={
-							<Button variant="outline" size="sm">
-								<Download className="mr-2 h-3 w-3" />
-								Export
-							</Button>
-						}
-					/>
-					<DropdownMenuContent align="end">
-						<DropdownMenuItem onClick={handleExportSvg}>
-							Export SVG
-						</DropdownMenuItem>
-						<DropdownMenuItem onClick={handleExportPng}>
-							Export PNG
-						</DropdownMenuItem>
-						<DropdownMenuItem onClick={handleExportJson}>
-							Export JSON
-						</DropdownMenuItem>
-						<DropdownMenuItem onClick={handleImportJson}>
-							Import JSON
-						</DropdownMenuItem>
-					</DropdownMenuContent>
-				</DropdownMenu>
-				<Button variant="outline" size="sm" onClick={handleSave}>
-					<Save className="mr-2 h-3 w-3" />
-					Save
-				</Button>
-			</div>
+		<>
+			{headerPortal && createPortal(headerActions, headerPortal)}
 
 			{/* Toolbar */}
 			<Toolbar
@@ -347,7 +372,7 @@ export function FloorEditor({ projectId, floorId }: FloorEditorProps) {
 			/>
 
 			{/* Main area */}
-			<div className="flex flex-1 min-h-0">
+			<div className="flex flex-1 min-h-0 min-w-0">
 				{/* Canvas */}
 				<div ref={canvasContainerRef} className="flex-1 flex min-w-0">
 					<Canvas
@@ -359,6 +384,12 @@ export function FloorEditor({ projectId, floorId }: FloorEditorProps) {
 						snapEnabled={editor.state.snapEnabled}
 						gridSize={floor.grid.size}
 						selectedEntityIds={editor.state.selectedEntityIds}
+						underlay={floor.underlay}
+						underlayUrl={
+							floor.underlay
+								? `/api/projects/${projectId}/assets/${floor.underlay.assetId}`
+								: undefined
+						}
 						onViewportChange={editor.setViewport}
 						onAddEntity={editor.addEntity}
 						onUpdateEntity={editor.updateEntity}
@@ -370,6 +401,7 @@ export function FloorEditor({ projectId, floorId }: FloorEditorProps) {
 				<div className="w-56 border-l bg-background overflow-y-auto hidden md:block">
 					<Inspector
 						entity={selectedEntity}
+						units={floor.units}
 						onUpdate={editor.updateEntity}
 						onDelete={editor.deleteEntity}
 					/>
@@ -388,8 +420,28 @@ export function FloorEditor({ projectId, floorId }: FloorEditorProps) {
 						onSelect={editor.selectEntity}
 						onMove={editor.moveEntity}
 					/>
+					<Separator />
+					<SymbolLibrary
+						selectedEntities={selectedEntities}
+						onPlace={editor.addEntities}
+					/>
+					<Separator />
+					<UnderlayPanel
+						projectId={projectId}
+						underlay={floor.underlay}
+						onUpdate={handleUnderlayUpdate}
+					/>
+					<Separator />
+					<HistoryPanel
+						projectId={projectId}
+						floorId={floorId}
+						onRestore={(entities) => {
+							editor.loadEntities(entities as Entity[]);
+							mutate();
+						}}
+					/>
 				</div>
 			</div>
-		</div>
+		</>
 	);
 }

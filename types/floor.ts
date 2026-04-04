@@ -1,5 +1,14 @@
 import type { Entity } from "./entities";
 
+export interface FloorUnderlay {
+	assetId: string;
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+	opacity: number;
+}
+
 export interface Floor {
 	id: string;
 	name: string;
@@ -8,6 +17,7 @@ export interface Floor {
 	grid: GridSettings;
 	layers: LayerVisibility;
 	entities: Entity[];
+	underlay?: FloorUnderlay;
 	schemaVersion: string;
 }
 

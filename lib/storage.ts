@@ -180,7 +180,70 @@ export async function updateFloor(
 ): Promise<Floor> {
 	await atomicWrite(floorFilePath(projectId, floorId), floor);
 	await updateProject(projectId, {}); // touch updatedAt
+	// Save version snapshot
+	await saveFloorVersion(projectId, floorId, floor);
 	return floor;
+}
+
+// --- Floor History ---
+
+const MAX_VERSIONS = 50;
+
+function floorHistoryDir(projectId: string, floorId: string): string {
+	return join(floorsDir(projectId), `${floorId}_history`);
+}
+
+async function saveFloorVersion(
+	projectId: string,
+	floorId: string,
+	floor: Floor,
+): Promise<void> {
+	const dir = floorHistoryDir(projectId, floorId);
+	await ensureDir(dir);
+	const timestamp = Date.now();
+	await writeFile(
+		join(dir, `${timestamp}.json`),
+		JSON.stringify(floor, null, 2),
+	);
+	// Prune old versions
+	const entries = await readdir(dir);
+	const sorted = entries.filter((e) => e.endsWith(".json")).sort();
+	if (sorted.length > MAX_VERSIONS) {
+		for (const old of sorted.slice(0, sorted.length - MAX_VERSIONS)) {
+			await rm(join(dir, old), { force: true });
+		}
+	}
+}
+
+export async function listFloorVersions(
+	projectId: string,
+	floorId: string,
+): Promise<{ version: string; timestamp: number }[]> {
+	const dir = floorHistoryDir(projectId, floorId);
+	try {
+		const entries = await readdir(dir);
+		return entries
+			.filter((e) => e.endsWith(".json"))
+			.map((e) => ({
+				version: e.replace(".json", ""),
+				timestamp: Number.parseInt(e.replace(".json", ""), 10),
+			}))
+			.sort((a, b) => b.timestamp - a.timestamp);
+	} catch {
+		return [];
+	}
+}
+
+export async function getFloorVersion(
+	projectId: string,
+	floorId: string,
+	version: string,
+): Promise<Floor> {
+	const raw = await readFile(
+		join(floorHistoryDir(projectId, floorId), `${version}.json`),
+		"utf-8",
+	);
+	return JSON.parse(raw) as Floor;
 }
 
 export async function duplicateFloor(

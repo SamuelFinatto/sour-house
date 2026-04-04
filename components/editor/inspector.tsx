@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { polygonArea, polygonPerimeter } from "@/lib/geometry";
+import { formatArea, formatLength } from "@/lib/units";
 import type {
 	DoorEntity,
 	Entity,
@@ -16,11 +18,17 @@ import type {
 
 interface InspectorProps {
 	entity: Entity | null;
+	units: string;
 	onUpdate: (id: string, updates: Partial<Entity>) => void;
 	onDelete: (id: string) => void;
 }
 
-export function Inspector({ entity, onUpdate, onDelete }: InspectorProps) {
+export function Inspector({
+	entity,
+	units,
+	onUpdate,
+	onDelete,
+}: InspectorProps) {
 	if (!entity) {
 		return (
 			<div className="p-3">
@@ -63,6 +71,7 @@ export function Inspector({ entity, onUpdate, onDelete }: InspectorProps) {
 				{entity.type === "room" && (
 					<RoomFields
 						entity={entity}
+						units={units}
 						onUpdate={(u) => onUpdate(entity.id, u)}
 					/>
 				)}
@@ -174,20 +183,41 @@ function WallFields({
 
 function RoomFields({
 	entity,
+	units,
 	onUpdate,
 }: {
 	entity: RoomEntity;
+	units: string;
 	onUpdate: (u: Partial<RoomEntity>) => void;
 }) {
+	const area = polygonArea(entity.polygon);
+	const perimeter = polygonPerimeter(entity.polygon);
+
 	return (
-		<div>
-			<Label className="text-xs">Name</Label>
-			<Input
-				value={entity.name}
-				onChange={(e) => onUpdate({ name: e.target.value })}
-				className="h-7 text-xs"
-			/>
-		</div>
+		<>
+			<div>
+				<Label className="text-xs">Name</Label>
+				<Input
+					value={entity.name}
+					onChange={(e) => onUpdate({ name: e.target.value })}
+					className="h-7 text-xs"
+				/>
+			</div>
+			<div className="grid grid-cols-2 gap-2">
+				<div>
+					<Label className="text-xs">Area</Label>
+					<p className="text-xs text-muted-foreground">
+						{formatArea(area, units)}
+					</p>
+				</div>
+				<div>
+					<Label className="text-xs">Perimeter</Label>
+					<p className="text-xs text-muted-foreground">
+						{formatLength(perimeter, units)}
+					</p>
+				</div>
+			</div>
+		</>
 	);
 }
 

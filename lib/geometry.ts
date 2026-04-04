@@ -28,6 +28,30 @@ export function generateId(): string {
 	return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/** Shoelace formula — returns the absolute area of a simple polygon. */
+export function polygonArea(points: [number, number][]): number {
+	if (points.length < 3) return 0;
+	let sum = 0;
+	for (let i = 0; i < points.length; i++) {
+		const [x1, y1] = points[i];
+		const [x2, y2] = points[(i + 1) % points.length];
+		sum += x1 * y2 - x2 * y1;
+	}
+	return Math.abs(sum) / 2;
+}
+
+/** Sum of edge lengths around a polygon. */
+export function polygonPerimeter(points: [number, number][]): number {
+	if (points.length < 2) return 0;
+	let sum = 0;
+	for (let i = 0; i < points.length; i++) {
+		const [x1, y1] = points[i];
+		const [x2, y2] = points[(i + 1) % points.length];
+		sum += Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+	}
+	return sum;
+}
+
 interface BBox {
 	minX: number;
 	minY: number;
