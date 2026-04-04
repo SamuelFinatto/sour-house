@@ -1,8 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import type { Entity } from "@/types/entities";
-import type { LayerVisibility } from "@/types/floor";
 import {
 	Armchair,
 	Bath,
@@ -17,6 +14,9 @@ import {
 	Square,
 	Toilet,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import type { Entity } from "@/types/entities";
+import type { LayerVisibility } from "@/types/floor";
 
 interface EntitiesPanelProps {
 	entities: Entity[];
@@ -92,7 +92,9 @@ export function EntitiesPanel({
 					{visibleEntities.map((entity) => (
 						<Button
 							key={entity.id}
-							variant={selectedEntityIds.includes(entity.id) ? "secondary" : "ghost"}
+							variant={
+								selectedEntityIds.includes(entity.id) ? "secondary" : "ghost"
+							}
 							size="sm"
 							className="w-full justify-start gap-2 h-7"
 							onClick={() => onSelect(entity.id)}

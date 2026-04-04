@@ -65,6 +65,22 @@ services:
     restart: unless-stopped
 ```
 
+To run on a custom port (e.g. 8080):
+
+```yaml
+services:
+  sour-house:
+    image: ghcr.io/deanshub/sour-house:main
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+    environment:
+      - DATA_DIR=/data
+      - PORT=8080
+    restart: unless-stopped
+```
+
 Start with:
 
 ```bash

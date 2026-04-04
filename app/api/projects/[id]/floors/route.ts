@@ -1,6 +1,6 @@
+import type { NextRequest } from "next/server";
 import { createFloor } from "@/lib/storage";
 import { APP_VERSION } from "@/lib/version";
-import type { NextRequest } from "next/server";
 
 export async function POST(
 	request: NextRequest,

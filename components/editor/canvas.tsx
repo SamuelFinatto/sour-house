@@ -1,10 +1,10 @@
 "use client";
 
-import { generateId, screenToCanvas, snapToGrid } from "@/lib/geometry";
-import type { Entity, WallEntity } from "@/types/entities";
-import type { Tool, Viewport } from "@/types/editor";
-import type { LayerVisibility } from "@/types/floor";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { generateId, screenToCanvas, snapToGrid } from "@/lib/geometry";
+import type { Tool, Viewport } from "@/types/editor";
+import type { Entity } from "@/types/entities";
+import type { LayerVisibility } from "@/types/floor";
 
 interface CanvasProps {
 	entities: Entity[];
@@ -48,9 +48,12 @@ export function Canvas({
 	const [isPanning, setIsPanning] = useState(false);
 	// "click" = click-move-click mode, "drag" = mousedown-drag-mouseup mode
 	const [drawMode, setDrawMode] = useState<"click" | "drag" | null>(null);
-	const panStartRef = useRef<{ x: number; y: number; vx: number; vy: number }>(
-		{ x: 0, y: 0, vx: 0, vy: 0 },
-	);
+	const panStartRef = useRef<{ x: number; y: number; vx: number; vy: number }>({
+		x: 0,
+		y: 0,
+		vx: 0,
+		vy: 0,
+	});
 	const mouseDownPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 	const entityClickedRef = useRef(false);
 	// Entity dragging state
@@ -65,6 +68,7 @@ export function Canvas({
 	const DRAG_THRESHOLD = 5;
 
 	// Reset draw state when tool changes
+	// biome-ignore lint/correctness/useExhaustiveDependencies: activeTool is intentionally a trigger
 	useEffect(() => {
 		setDrawStart(null);
 		setDrawCurrent(null);
@@ -83,7 +87,10 @@ export function Canvas({
 	);
 
 	const isDrawTool =
-		activeTool === "wall" || activeTool === "room" || activeTool === "door" || activeTool === "window";
+		activeTool === "wall" ||
+		activeTool === "room" ||
+		activeTool === "door" ||
+		activeTool === "window";
 	const isPlaceTool =
 		activeTool === "light" ||
 		activeTool === "outlet" ||
@@ -94,7 +101,10 @@ export function Canvas({
 		activeTool === "shower" ||
 		activeTool === "bathtub";
 
-	function finishDraw(start: { x: number; y: number }, end: { x: number; y: number }) {
+	function finishDraw(
+		start: { x: number; y: number },
+		end: { x: number; y: number },
+	) {
 		if (activeTool === "wall") {
 			if (start.x === end.x && start.y === end.y) return;
 			onAddEntity({
@@ -317,7 +327,10 @@ export function Canvas({
 				const offsetX = dragEntity.originX + polyDx - firstPt[0];
 				const offsetY = dragEntity.originY + polyDy - firstPt[1];
 				onUpdateEntity(entity.id, {
-					polygon: entity.polygon.map(([px, py]) => [px + offsetX, py + offsetY]),
+					polygon: entity.polygon.map(([px, py]) => [
+						px + offsetX,
+						py + offsetY,
+					]),
 				} as Partial<Entity>);
 			} else if ("x" in entity && "y" in entity) {
 				onUpdateEntity(entity.id, {
@@ -431,7 +444,7 @@ export function Canvas({
 		});
 	}
 
-	function handleEntityClick(e: React.MouseEvent, id: string) {
+	function handleEntityClick(e: React.MouseEvent, _id: string) {
 		if (activeTool !== "select") return;
 		e.stopPropagation();
 		entityClickedRef.current = true;
@@ -522,18 +535,20 @@ export function Canvas({
 						opacity={0.5}
 					/>
 				)}
-				{drawStart && drawCurrent && (activeTool === "door" || activeTool === "window") && (
-					<line
-						x1={drawStart.x}
-						y1={drawStart.y}
-						x2={drawCurrent.x}
-						y2={drawCurrent.y}
-						stroke={activeTool === "door" ? "#a8d8ea" : "#87ceeb"}
-						strokeWidth={activeTool === "door" ? 10 : 6}
-						strokeLinecap="round"
-						opacity={0.6}
-					/>
-				)}
+				{drawStart &&
+					drawCurrent &&
+					(activeTool === "door" || activeTool === "window") && (
+						<line
+							x1={drawStart.x}
+							y1={drawStart.y}
+							x2={drawCurrent.x}
+							y2={drawCurrent.y}
+							stroke={activeTool === "door" ? "#a8d8ea" : "#87ceeb"}
+							strokeWidth={activeTool === "door" ? 10 : 6}
+							strokeLinecap="round"
+							opacity={0.6}
+						/>
+					)}
 				{drawStart && drawCurrent && activeTool === "room" && (
 					<rect
 						x={Math.min(drawStart.x, drawCurrent.x)}
@@ -570,7 +585,11 @@ function EntityRenderer({
 	switch (entity.type) {
 		case "wall":
 			return (
-				<g onMouseDown={onMouseDown} onClick={onClick} className="cursor-pointer">
+				<g
+					onMouseDown={onMouseDown}
+					onClick={onClick}
+					className="cursor-pointer"
+				>
 					{isSelected && (
 						<line
 							x1={entity.x1}
@@ -610,7 +629,11 @@ function EntityRenderer({
 			);
 		case "door":
 			return (
-				<g onMouseDown={onMouseDown} onClick={onClick} className="cursor-pointer">
+				<g
+					onMouseDown={onMouseDown}
+					onClick={onClick}
+					className="cursor-pointer"
+				>
 					<rect
 						x={entity.x - entity.width / 2}
 						y={entity.y - 5}
@@ -625,7 +648,11 @@ function EntityRenderer({
 			);
 		case "window":
 			return (
-				<g onMouseDown={onMouseDown} onClick={onClick} className="cursor-pointer">
+				<g
+					onMouseDown={onMouseDown}
+					onClick={onClick}
+					className="cursor-pointer"
+				>
 					<rect
 						x={entity.x - entity.width / 2}
 						y={entity.y - 3}
@@ -670,7 +697,11 @@ function EntityRenderer({
 			);
 		case "furniture":
 			return (
-				<g onMouseDown={onMouseDown} onClick={onClick} className="cursor-pointer">
+				<g
+					onMouseDown={onMouseDown}
+					onClick={onClick}
+					className="cursor-pointer"
+				>
 					<rect
 						x={entity.x}
 						y={entity.y}
@@ -696,7 +727,11 @@ function EntityRenderer({
 			);
 		case "annotation":
 			return (
-				<g onMouseDown={onMouseDown} onClick={onClick} className="cursor-pointer">
+				<g
+					onMouseDown={onMouseDown}
+					onClick={onClick}
+					className="cursor-pointer"
+				>
 					<rect
 						x={entity.x - 2}
 						y={entity.y - 12}
@@ -707,19 +742,17 @@ function EntityRenderer({
 						strokeWidth={1}
 						rx={3}
 					/>
-					<text
-						x={entity.x + 2}
-						y={entity.y}
-						fontSize={11}
-						fill="#333"
-					>
+					<text x={entity.x + 2} y={entity.y} fontSize={11} fill="#333">
 						{entity.text}
 					</text>
 				</g>
 			);
 		case "sink":
 			return (
-				<g onMouseDown={onMouseDown} onClick={onClick} className="cursor-pointer"
+				<g
+					onMouseDown={onMouseDown}
+					onClick={onClick}
+					className="cursor-pointer"
 					transform={`rotate(${entity.rotation}, ${entity.x + entity.width / 2}, ${entity.y + entity.height / 2})`}
 				>
 					<rect
@@ -754,7 +787,10 @@ function EntityRenderer({
 			);
 		case "toilet":
 			return (
-				<g onMouseDown={onMouseDown} onClick={onClick} className="cursor-pointer"
+				<g
+					onMouseDown={onMouseDown}
+					onClick={onClick}
+					className="cursor-pointer"
 					transform={`rotate(${entity.rotation}, ${entity.x}, ${entity.y})`}
 				>
 					{/* Tank */}
@@ -791,7 +827,10 @@ function EntityRenderer({
 			);
 		case "shower":
 			return (
-				<g onMouseDown={onMouseDown} onClick={onClick} className="cursor-pointer"
+				<g
+					onMouseDown={onMouseDown}
+					onClick={onClick}
+					className="cursor-pointer"
 					transform={`rotate(${entity.rotation}, ${entity.x + entity.width / 2}, ${entity.y + entity.height / 2})`}
 				>
 					<rect
@@ -827,7 +866,10 @@ function EntityRenderer({
 			);
 		case "bathtub":
 			return (
-				<g onMouseDown={onMouseDown} onClick={onClick} className="cursor-pointer"
+				<g
+					onMouseDown={onMouseDown}
+					onClick={onClick}
+					className="cursor-pointer"
 					transform={`rotate(${entity.rotation}, ${entity.x + entity.width / 2}, ${entity.y + entity.height / 2})`}
 				>
 					<rect

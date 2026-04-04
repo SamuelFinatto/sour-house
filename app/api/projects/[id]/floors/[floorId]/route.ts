@@ -1,5 +1,5 @@
-import { deleteFloor, getFloor, updateFloor } from "@/lib/storage";
 import type { NextRequest } from "next/server";
+import { deleteFloor, getFloor, updateFloor } from "@/lib/storage";
 
 export async function GET(
 	_req: NextRequest,

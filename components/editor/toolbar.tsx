@@ -1,15 +1,7 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Separator } from "@/components/ui/separator";
-import type { Tool } from "@/types/editor";
-import {
+	AppWindow,
 	Armchair,
 	Bath,
 	ChevronDown,
@@ -19,10 +11,12 @@ import {
 	Hand,
 	Lightbulb,
 	Magnet,
+	Maximize,
 	MessageSquare,
+	Minus,
 	MousePointer2,
-	AppWindow,
 	Plug,
+	Plus,
 	Redo2,
 	Ruler,
 	ShowerHead,
@@ -30,20 +24,36 @@ import {
 	Toilet,
 	Undo2,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Separator } from "@/components/ui/separator";
+import type { Tool } from "@/types/editor";
 
 interface ToolbarProps {
 	activeTool: Tool;
 	gridEnabled: boolean;
 	snapEnabled: boolean;
+	zoom: number;
 	onSelectTool: (tool: Tool) => void;
 	onToggleGrid: () => void;
 	onToggleSnap: () => void;
+	onZoomChange: (zoom: number) => void;
+	onFitView: () => void;
 	onUndo: () => void;
 	onRedo: () => void;
 }
 
 const coreTools: { tool: Tool; icon: React.ReactNode; label: string }[] = [
-	{ tool: "select", icon: <MousePointer2 className="h-4 w-4" />, label: "Select" },
+	{
+		tool: "select",
+		icon: <MousePointer2 className="h-4 w-4" />,
+		label: "Select",
+	},
 	{ tool: "pan", icon: <Hand className="h-4 w-4" />, label: "Pan" },
 ];
 
@@ -54,10 +64,11 @@ const structureTools: { tool: Tool; icon: React.ReactNode; label: string }[] = [
 	{ tool: "window", icon: <AppWindow className="h-4 w-4" />, label: "Window" },
 ];
 
-const electricalTools: { tool: Tool; icon: React.ReactNode; label: string }[] = [
-	{ tool: "light", icon: <Lightbulb className="h-4 w-4" />, label: "Light" },
-	{ tool: "outlet", icon: <Plug className="h-4 w-4" />, label: "Outlet" },
-];
+const electricalTools: { tool: Tool; icon: React.ReactNode; label: string }[] =
+	[
+		{ tool: "light", icon: <Lightbulb className="h-4 w-4" />, label: "Light" },
+		{ tool: "outlet", icon: <Plug className="h-4 w-4" />, label: "Outlet" },
+	];
 
 const plumbingTools: { tool: Tool; icon: React.ReactNode; label: string }[] = [
 	{ tool: "sink", icon: <Droplets className="h-4 w-4" />, label: "Sink" },
@@ -67,8 +78,16 @@ const plumbingTools: { tool: Tool; icon: React.ReactNode; label: string }[] = [
 ];
 
 const otherTools: { tool: Tool; icon: React.ReactNode; label: string }[] = [
-	{ tool: "furniture", icon: <Armchair className="h-4 w-4" />, label: "Furniture" },
-	{ tool: "annotation", icon: <MessageSquare className="h-4 w-4" />, label: "Note" },
+	{
+		tool: "furniture",
+		icon: <Armchair className="h-4 w-4" />,
+		label: "Furniture",
+	},
+	{
+		tool: "annotation",
+		icon: <MessageSquare className="h-4 w-4" />,
+		label: "Note",
+	},
 ];
 
 function ToolDropdown({
@@ -106,7 +125,7 @@ function ToolDropdown({
 				{tools.map(({ tool, icon: toolIcon, label: toolLabel }) => (
 					<DropdownMenuItem
 						key={tool}
-						onSelect={() => onSelectTool(tool)}
+						onClick={() => onSelectTool(tool)}
 						className={activeTool === tool ? "bg-accent" : ""}
 					>
 						{toolIcon}
@@ -118,13 +137,18 @@ function ToolDropdown({
 	);
 }
 
+const ZOOM_PRESETS = [0.25, 0.5, 0.75, 1, 1.5, 2, 3];
+
 export function Toolbar({
 	activeTool,
 	gridEnabled,
 	snapEnabled,
+	zoom,
 	onSelectTool,
 	onToggleGrid,
 	onToggleSnap,
+	onZoomChange,
+	onFitView,
 	onUndo,
 	onRedo,
 }: ToolbarProps) {
@@ -219,6 +243,62 @@ export function Toolbar({
 			</Button>
 			<Button variant="ghost" size="icon-sm" onClick={onRedo} title="Redo">
 				<Redo2 className="h-4 w-4" />
+			</Button>
+
+			<Separator orientation="vertical" className="mx-1 h-6" />
+
+			{/* Zoom controls */}
+			<Button
+				variant="ghost"
+				size="icon-sm"
+				onClick={() => onZoomChange(Math.max(0.1, zoom / 1.2))}
+				title="Zoom Out"
+			>
+				<Minus className="h-4 w-4" />
+			</Button>
+
+			<DropdownMenu>
+				<DropdownMenuTrigger
+					render={
+						<Button
+							variant="ghost"
+							size="sm"
+							className="px-2 min-w-[4rem] font-mono text-xs"
+							title="Zoom level"
+						/>
+					}
+				>
+					{Math.round(zoom * 100)}%
+				</DropdownMenuTrigger>
+				<DropdownMenuContent>
+					{ZOOM_PRESETS.map((preset) => (
+						<DropdownMenuItem
+							key={preset}
+							onClick={() => onZoomChange(preset)}
+							className={Math.abs(zoom - preset) < 0.01 ? "bg-accent" : ""}
+						>
+							{Math.round(preset * 100)}%
+						</DropdownMenuItem>
+					))}
+				</DropdownMenuContent>
+			</DropdownMenu>
+
+			<Button
+				variant="ghost"
+				size="icon-sm"
+				onClick={() => onZoomChange(Math.min(5, zoom * 1.2))}
+				title="Zoom In"
+			>
+				<Plus className="h-4 w-4" />
+			</Button>
+
+			<Button
+				variant="ghost"
+				size="icon-sm"
+				onClick={onFitView}
+				title="Fit to Content"
+			>
+				<Maximize className="h-4 w-4" />
 			</Button>
 		</div>
 	);

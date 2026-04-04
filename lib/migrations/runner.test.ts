@@ -1,15 +1,16 @@
+import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { migrateAll, migrateProject } from "./runner";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { migrations } from "./registry";
+import { migrateAll, migrateProject } from "./runner";
 import type { Migration } from "./types";
 
 let testDir: string;
 
 beforeEach(async () => {
-	testDir = join(tmpdir(), `sour-house-test-${Date.now()}`);
+	testDir = join(tmpdir(), `sour-house-test-${randomUUID()}`);
 	await mkdir(testDir, { recursive: true });
 });
 
@@ -101,9 +102,7 @@ describe("migrateProject", () => {
 		const project = await readJson(join(projectDir, "project.json"));
 		expect(project.migrated).toBe(true);
 
-		const floor = await readJson(
-			join(projectDir, "floors", "ground.json"),
-		);
+		const floor = await readJson(join(projectDir, "floors", "ground.json"));
 		expect(floor.floorMigrated).toBe(true);
 	});
 });

@@ -1,12 +1,51 @@
 "use client";
 
+import { Upload } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { CreateProjectDialog } from "@/components/project/create-project-dialog";
 import { ProjectCard } from "@/components/project/project-card";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProjects } from "@/hooks/use-projects";
 
 export function ProjectList() {
 	const { projects, isLoading, mutate } = useProjects();
+	const router = useRouter();
+
+	async function handleImportProject() {
+		const input = document.createElement("input");
+		input.type = "file";
+		input.accept = ".json";
+		input.onchange = async () => {
+			const file = input.files?.[0];
+			if (!file) return;
+			try {
+				const text = await file.text();
+				const data = JSON.parse(text);
+				if (!data.project || !data.floors) {
+					toast.error("Invalid project file");
+					return;
+				}
+				const res = await fetch("/api/projects/import", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: text,
+				});
+				if (!res.ok) {
+					toast.error("Failed to import project");
+					return;
+				}
+				const { id } = await res.json();
+				toast.success("Project imported");
+				mutate();
+				router.push(`/projects/${id}`);
+			} catch {
+				toast.error("Failed to parse project file");
+			}
+		};
+		input.click();
+	}
 
 	async function handleCreate(project: {
 		id: string;
@@ -35,7 +74,13 @@ export function ProjectList() {
 						Manage your house plans
 					</p>
 				</div>
-				<CreateProjectDialog onCreate={handleCreate} />
+				<div className="flex items-center gap-2">
+					<Button variant="outline" size="sm" onClick={handleImportProject}>
+						<Upload className="mr-2 h-3 w-3" />
+						Import
+					</Button>
+					<CreateProjectDialog onCreate={handleCreate} />
+				</div>
 			</div>
 
 			{isLoading ? (

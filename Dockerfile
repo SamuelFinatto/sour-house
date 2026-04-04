@@ -33,6 +33,6 @@ ENV DATA_DIR=/data
 
 USER nextjs
 
-EXPOSE 3000
+EXPOSE ${PORT}
 
 CMD ["bun", "server.js"]

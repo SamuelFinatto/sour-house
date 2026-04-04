@@ -1,5 +1,5 @@
-import type { ProjectSummary } from "@/types/project";
 import useSWR from "swr";
+import type { ProjectSummary } from "@/types/project";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 

@@ -1,10 +1,8 @@
+import { Suspense } from "react";
 import { FloorList } from "@/components/floor/floor-list";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Suspense } from "react";
 
-export default async function ProjectPage(
-	props: PageProps<"/projects/[id]">,
-) {
+export default async function ProjectPage(props: PageProps<"/projects/[id]">) {
 	const { id } = await props.params;
 
 	return (

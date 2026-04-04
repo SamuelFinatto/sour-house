@@ -1,4 +1,4 @@
-import { readFile, readdir, rename, writeFile } from "node:fs/promises";
+import { readdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { coerce, gt, lt, valid } from "semver";
 import { APP_VERSION } from "../version";
@@ -115,9 +115,7 @@ export async function migrateProject(
 	};
 }
 
-export async function migrateAll(
-	dataDir: string,
-): Promise<MigrationResult[]> {
+export async function migrateAll(dataDir: string): Promise<MigrationResult[]> {
 	const results: MigrationResult[] = [];
 
 	let entries: string[];

@@ -1,26 +1,23 @@
 export type {
-	Entity,
-	EntityType,
-	WallEntity,
-	RoomEntity,
-	DoorEntity,
-	WindowEntity,
-	LightEntity,
-	OutletEntity,
-	FurnitureEntity,
-	AnnotationEntity,
-} from "./entities";
-
-export type { Floor, GridSettings, LayerVisibility, LayerName } from "./floor";
-
-export type { Project, Units, ProjectSummary } from "./project";
-
-export type {
-	Tool,
-	Viewport,
-	EditorState,
-	HistoryEntry,
 	CanvasPoint,
 	DragState,
+	EditorState,
+	HistoryEntry,
+	Tool,
 	ToolConfig,
+	Viewport,
 } from "./editor";
+export type {
+	AnnotationEntity,
+	DoorEntity,
+	Entity,
+	EntityType,
+	FurnitureEntity,
+	LightEntity,
+	OutletEntity,
+	RoomEntity,
+	WallEntity,
+	WindowEntity,
+} from "./entities";
+export type { Floor, GridSettings, LayerName, LayerVisibility } from "./floor";
+export type { Project, ProjectSummary, Units } from "./project";

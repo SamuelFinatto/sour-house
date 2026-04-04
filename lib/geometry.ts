@@ -112,7 +112,11 @@ export function fitViewport(
 	const bboxH = bbox.maxY - bbox.minY;
 
 	if (bboxW === 0 && bboxH === 0) {
-		return { x: containerWidth / 2 - bbox.minX, y: containerHeight / 2 - bbox.minY, zoom: 1 };
+		return {
+			x: containerWidth / 2 - bbox.minX,
+			y: containerHeight / 2 - bbox.minY,
+			zoom: 1,
+		};
 	}
 
 	const availW = containerWidth - FIT_PADDING * 2;

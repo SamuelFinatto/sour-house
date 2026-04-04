@@ -1,9 +1,9 @@
 "use client";
 
-import type { Entity } from "@/types/entities";
-import type { EditorState, HistoryEntry, Tool, Viewport } from "@/types/editor";
-import type { LayerName, LayerVisibility } from "@/types/floor";
 import { useCallback, useRef, useState } from "react";
+import type { EditorState, HistoryEntry, Tool, Viewport } from "@/types/editor";
+import type { Entity } from "@/types/entities";
+import type { LayerName, LayerVisibility } from "@/types/floor";
 
 const MAX_HISTORY = 50;
 

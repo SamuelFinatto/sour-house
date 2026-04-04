@@ -1,5 +1,5 @@
-import { deleteProject, getProject, updateProject } from "@/lib/storage";
 import type { NextRequest } from "next/server";
+import { deleteProject, getProject, updateProject } from "@/lib/storage";
 
 export async function GET(
 	_req: NextRequest,

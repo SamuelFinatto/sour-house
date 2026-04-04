@@ -1,11 +1,18 @@
 "use client";
 
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import type { Entity, WallEntity, RoomEntity, DoorEntity, WindowEntity, FurnitureEntity } from "@/types/entities";
-import { Trash2 } from "lucide-react";
+import type {
+	DoorEntity,
+	Entity,
+	FurnitureEntity,
+	RoomEntity,
+	WallEntity,
+	WindowEntity,
+} from "@/types/entities";
 
 interface InspectorProps {
 	entity: Entity | null;
@@ -75,7 +82,14 @@ export function Inspector({ entity, onUpdate, onDelete }: InspectorProps) {
 					entity.type === "shower" ||
 					entity.type === "bathtub") && (
 					<PlumbingFixtureFields
-						entity={entity as Entity & { width: number; height: number; rotation: number; label?: string }}
+						entity={
+							entity as Entity & {
+								width: number;
+								height: number;
+								rotation: number;
+								label?: string;
+							}
+						}
 						onUpdate={(u) => onUpdate(entity.id, u)}
 					/>
 				)}
@@ -101,7 +115,10 @@ export function Inspector({ entity, onUpdate, onDelete }: InspectorProps) {
 function WallFields({
 	entity,
 	onUpdate,
-}: { entity: WallEntity; onUpdate: (u: Partial<WallEntity>) => void }) {
+}: {
+	entity: WallEntity;
+	onUpdate: (u: Partial<WallEntity>) => void;
+}) {
 	return (
 		<>
 			<div className="grid grid-cols-2 gap-2">
@@ -158,7 +175,10 @@ function WallFields({
 function RoomFields({
 	entity,
 	onUpdate,
-}: { entity: RoomEntity; onUpdate: (u: Partial<RoomEntity>) => void }) {
+}: {
+	entity: RoomEntity;
+	onUpdate: (u: Partial<RoomEntity>) => void;
+}) {
 	return (
 		<div>
 			<Label className="text-xs">Name</Label>
@@ -279,7 +299,9 @@ function PointFields({
 				<Input
 					type="number"
 					value={entity.x}
-					onChange={(e) => onUpdate({ x: Number(e.target.value) } as Partial<Entity>)}
+					onChange={(e) =>
+						onUpdate({ x: Number(e.target.value) } as Partial<Entity>)
+					}
 					className="h-7 text-xs"
 				/>
 			</div>
@@ -288,7 +310,9 @@ function PointFields({
 				<Input
 					type="number"
 					value={entity.y}
-					onChange={(e) => onUpdate({ y: Number(e.target.value) } as Partial<Entity>)}
+					onChange={(e) =>
+						onUpdate({ y: Number(e.target.value) } as Partial<Entity>)
+					}
 					className="h-7 text-xs"
 				/>
 			</div>
@@ -300,7 +324,12 @@ function PlumbingFixtureFields({
 	entity,
 	onUpdate,
 }: {
-	entity: Entity & { width: number; height: number; rotation: number; label?: string };
+	entity: Entity & {
+		width: number;
+		height: number;
+		rotation: number;
+		label?: string;
+	};
 	onUpdate: (u: Partial<Entity>) => void;
 }) {
 	return (
@@ -311,7 +340,9 @@ function PlumbingFixtureFields({
 					<Input
 						type="number"
 						value={entity.width}
-						onChange={(e) => onUpdate({ width: Number(e.target.value) } as Partial<Entity>)}
+						onChange={(e) =>
+							onUpdate({ width: Number(e.target.value) } as Partial<Entity>)
+						}
 						className="h-7 text-xs"
 					/>
 				</div>
@@ -320,7 +351,9 @@ function PlumbingFixtureFields({
 					<Input
 						type="number"
 						value={entity.height}
-						onChange={(e) => onUpdate({ height: Number(e.target.value) } as Partial<Entity>)}
+						onChange={(e) =>
+							onUpdate({ height: Number(e.target.value) } as Partial<Entity>)
+						}
 						className="h-7 text-xs"
 					/>
 				</div>
@@ -330,7 +363,9 @@ function PlumbingFixtureFields({
 				<Input
 					type="number"
 					value={entity.rotation}
-					onChange={(e) => onUpdate({ rotation: Number(e.target.value) } as Partial<Entity>)}
+					onChange={(e) =>
+						onUpdate({ rotation: Number(e.target.value) } as Partial<Entity>)
+					}
 					className="h-7 text-xs"
 				/>
 			</div>
@@ -338,7 +373,9 @@ function PlumbingFixtureFields({
 				<Label className="text-xs">Label</Label>
 				<Input
 					value={entity.label ?? ""}
-					onChange={(e) => onUpdate({ label: e.target.value } as Partial<Entity>)}
+					onChange={(e) =>
+						onUpdate({ label: e.target.value } as Partial<Entity>)
+					}
 					className="h-7 text-xs"
 				/>
 			</div>
@@ -361,7 +398,9 @@ function PlumbingPointFields({
 					<Input
 						type="number"
 						value={entity.x}
-						onChange={(e) => onUpdate({ x: Number(e.target.value) } as Partial<Entity>)}
+						onChange={(e) =>
+							onUpdate({ x: Number(e.target.value) } as Partial<Entity>)
+						}
 						className="h-7 text-xs"
 					/>
 				</div>
@@ -370,7 +409,9 @@ function PlumbingPointFields({
 					<Input
 						type="number"
 						value={entity.y}
-						onChange={(e) => onUpdate({ y: Number(e.target.value) } as Partial<Entity>)}
+						onChange={(e) =>
+							onUpdate({ y: Number(e.target.value) } as Partial<Entity>)
+						}
 						className="h-7 text-xs"
 					/>
 				</div>
@@ -380,7 +421,9 @@ function PlumbingPointFields({
 				<Input
 					type="number"
 					value={entity.rotation}
-					onChange={(e) => onUpdate({ rotation: Number(e.target.value) } as Partial<Entity>)}
+					onChange={(e) =>
+						onUpdate({ rotation: Number(e.target.value) } as Partial<Entity>)
+					}
 					className="h-7 text-xs"
 				/>
 			</div>
@@ -388,7 +431,9 @@ function PlumbingPointFields({
 				<Label className="text-xs">Label</Label>
 				<Input
 					value={entity.label ?? ""}
-					onChange={(e) => onUpdate({ label: e.target.value } as Partial<Entity>)}
+					onChange={(e) =>
+						onUpdate({ label: e.target.value } as Partial<Entity>)
+					}
 					className="h-7 text-xs"
 				/>
 			</div>

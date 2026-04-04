@@ -1,5 +1,5 @@
-import type { Floor } from "@/types/floor";
 import useSWR from "swr";
+import type { Floor } from "@/types/floor";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 

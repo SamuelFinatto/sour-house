@@ -1,13 +1,25 @@
 "use client";
 
+import {
+	ArrowLeft,
+	Check,
+	Download,
+	Layers,
+	MapPin,
+	Pencil,
+	Trash2,
+	X,
+} from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
+import { toast } from "sonner";
 import { CreateFloorDialog } from "@/components/floor/create-floor-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProject } from "@/hooks/use-project";
-import { ArrowLeft, Layers, MapPin, Pencil, Trash2 } from "lucide-react";
-import Link from "next/link";
 
 interface FloorListProps {
 	projectId: string;
@@ -15,6 +27,8 @@ interface FloorListProps {
 
 export function FloorList({ projectId }: FloorListProps) {
 	const { project, isLoading, mutate } = useProject(projectId);
+	const [isRenaming, setIsRenaming] = useState(false);
+	const [renameValue, setRenameValue] = useState("");
 
 	async function handleCreateFloor(floor: {
 		id: string;
@@ -34,6 +48,36 @@ export function FloorList({ projectId }: FloorListProps) {
 			method: "DELETE",
 		});
 		mutate();
+	}
+
+	async function handleRename() {
+		if (!renameValue.trim()) return;
+		await fetch(`/api/projects/${projectId}`, {
+			method: "PUT",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ name: renameValue.trim() }),
+		});
+		setIsRenaming(false);
+		mutate();
+	}
+
+	async function handleExportProject() {
+		const res = await fetch(`/api/projects/${projectId}/export`);
+		if (!res.ok) {
+			toast.error("Failed to export project");
+			return;
+		}
+		const blob = await res.blob();
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = `${project?.name ?? projectId}.json`;
+		document.body.appendChild(a);
+		a.click();
+		setTimeout(() => {
+			document.body.removeChild(a);
+			URL.revokeObjectURL(url);
+		}, 100);
 	}
 
 	if (isLoading) {
@@ -65,7 +109,45 @@ export function FloorList({ projectId }: FloorListProps) {
 				</Link>
 				<div className="flex items-start justify-between">
 					<div className="space-y-1">
-						<h1 className="text-2xl font-semibold">{project.name}</h1>
+						{isRenaming ? (
+							<div className="flex items-center gap-2">
+								<Input
+									value={renameValue}
+									onChange={(e) => setRenameValue(e.target.value)}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") handleRename();
+										if (e.key === "Escape") setIsRenaming(false);
+									}}
+									className="h-9 text-xl font-semibold w-64"
+									autoFocus
+								/>
+								<Button variant="ghost" size="icon-sm" onClick={handleRename}>
+									<Check className="h-4 w-4" />
+								</Button>
+								<Button
+									variant="ghost"
+									size="icon-sm"
+									onClick={() => setIsRenaming(false)}
+								>
+									<X className="h-4 w-4" />
+								</Button>
+							</div>
+						) : (
+							<div className="flex items-center gap-2 group">
+								<h1 className="text-2xl font-semibold">{project.name}</h1>
+								<Button
+									variant="ghost"
+									size="icon-sm"
+									className="opacity-0 group-hover:opacity-100 transition-opacity"
+									onClick={() => {
+										setRenameValue(project.name);
+										setIsRenaming(true);
+									}}
+								>
+									<Pencil className="h-3 w-3" />
+								</Button>
+							</div>
+						)}
 						{project.address && (
 							<p className="text-sm text-muted-foreground flex items-center gap-1">
 								<MapPin className="h-3 w-3" />
@@ -73,7 +155,13 @@ export function FloorList({ projectId }: FloorListProps) {
 							</p>
 						)}
 					</div>
-					<CreateFloorDialog onCreate={handleCreateFloor} />
+					<div className="flex items-center gap-2">
+						<Button variant="outline" size="sm" onClick={handleExportProject}>
+							<Download className="mr-2 h-3 w-3" />
+							Export
+						</Button>
+						<CreateFloorDialog onCreate={handleCreateFloor} />
+					</div>
 				</div>
 			</div>
 
@@ -102,7 +190,9 @@ export function FloorList({ projectId }: FloorListProps) {
 									<Button
 										variant="ghost"
 										size="icon-sm"
-										render={<Link href={`/projects/${projectId}/floors/${floorId}`} />}
+										render={
+											<Link href={`/projects/${projectId}/floors/${floorId}`} />
+										}
 									>
 										<Pencil className="h-4 w-4" />
 									</Button>
