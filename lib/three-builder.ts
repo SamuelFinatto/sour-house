@@ -240,3 +240,47 @@ export function buildScene3D(
 
 	return objects;
 }
+
+export function getSceneBBox(objects: Object3D[]): {
+	centerX: number;
+	centerY: number;
+	centerZ: number;
+	size: number;
+} {
+	if (objects.length === 0) {
+		return { centerX: 0, centerY: 0, centerZ: 0, size: 10 };
+	}
+	let minX = Infinity;
+	let minY = Infinity;
+	let minZ = Infinity;
+	let maxX = -Infinity;
+	let maxY = -Infinity;
+	let maxZ = -Infinity;
+	for (const obj of objects) {
+		if (obj.type === "box") {
+			const hw = obj.width / 2;
+			const hh = obj.height / 2;
+			const hd = obj.depth / 2;
+			minX = Math.min(minX, obj.x - hw);
+			maxX = Math.max(maxX, obj.x + hw);
+			minY = Math.min(minY, obj.y - hh);
+			maxY = Math.max(maxY, obj.y + hh);
+			minZ = Math.min(minZ, obj.z - hd);
+			maxZ = Math.max(maxZ, obj.z + hd);
+		} else {
+			const hw = obj.width / 2;
+			const hd = obj.depth / 2;
+			minX = Math.min(minX, obj.x - hw);
+			maxX = Math.max(maxX, obj.x + hw);
+			minY = Math.min(minY, obj.y);
+			maxY = Math.max(maxY, obj.y);
+			minZ = Math.min(minZ, obj.z - hd);
+			maxZ = Math.max(maxZ, obj.z + hd);
+		}
+	}
+	const centerX = (minX + maxX) / 2;
+	const centerY = (minY + maxY) / 2;
+	const centerZ = (minZ + maxZ) / 2;
+	const size = Math.max(maxX - minX, maxY - minY, maxZ - minZ, 1);
+	return { centerX, centerY, centerZ, size };
+}

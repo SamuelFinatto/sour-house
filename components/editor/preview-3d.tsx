@@ -1,12 +1,12 @@
 "use client";
 
 import { OrbitControls } from "@react-three/drei";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { useFloor } from "@/hooks/use-floor";
 import type { Box3D, Object3D, Plane3D } from "@/lib/three-builder";
-import { buildScene3D } from "@/lib/three-builder";
+import { buildScene3D, getSceneBBox } from "@/lib/three-builder";
 
 interface Preview3DProps {
 	projectId: string;
@@ -31,12 +31,41 @@ function FloorPlane({ obj }: { obj: Plane3D }) {
 	);
 }
 
-function Scene({ objects }: { objects: Object3D[] }) {
+function AutoFitCamera({
+	centerX,
+	centerY,
+	centerZ,
+	size,
+}: { centerX: number; centerY: number; centerZ: number; size: number }) {
+	const { camera } = useThree();
+
+	useEffect(() => {
+		const dist = size * 1.5;
+		camera.position.set(
+			centerX + dist * 0.6,
+			centerY + dist * 0.8,
+			centerZ + dist * 0.6,
+		);
+		camera.lookAt(centerX, centerY, centerZ);
+		camera.updateProjectionMatrix();
+	}, [camera, centerX, centerY, centerZ, size]);
+
+	return null;
+}
+
+function Scene({
+	objects,
+	bbox,
+}: { objects: Object3D[]; bbox: ReturnType<typeof getSceneBBox> }) {
 	return (
 		<>
 			<ambientLight intensity={0.6} />
 			<directionalLight position={[10, 20, 10]} intensity={0.8} />
-			<OrbitControls makeDefault />
+			<AutoFitCamera {...bbox} />
+			<OrbitControls
+				makeDefault
+				target={[bbox.centerX, bbox.centerY, bbox.centerZ]}
+			/>
 			{objects.map((obj, i) =>
 				obj.type === "box" ? (
 					<BoxMesh key={`box-${i}`} obj={obj} />
@@ -82,6 +111,8 @@ export function Preview3D({ projectId, floorId }: Preview3DProps) {
 		return buildScene3D(floor.entities, floor.elevationCm);
 	}, [floor]);
 
+	const bbox = useMemo(() => getSceneBBox(objects), [objects]);
+
 	if (isLoading) {
 		return (
 			<div className="flex-1 flex items-center justify-center">
@@ -101,8 +132,8 @@ export function Preview3D({ projectId, floorId }: Preview3DProps) {
 	return (
 		<div className="relative flex-1 min-h-0">
 			<div className="absolute inset-0">
-				<Canvas camera={{ position: [5, 8, 10], fov: 50 }}>
-					<Scene objects={objects} />
+				<Canvas camera={{ fov: 50 }}>
+					<Scene objects={objects} bbox={bbox} />
 				</Canvas>
 			</div>
 		</div>
