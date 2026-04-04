@@ -59,6 +59,7 @@ export interface DoorEntity extends BaseEntity {
 	rotation: number;
 	wallId: string;
 	swing: "left" | "right";
+	doorStyle?: "regular" | "sliding";
 }
 
 export interface WindowEntity extends BaseEntity {

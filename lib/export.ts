@@ -10,8 +10,40 @@ function renderEntityToSvg(entity: Entity): string {
 			return `<line x1="${entity.x1}" y1="${entity.y1}" x2="${entity.x2}" y2="${entity.y2}" stroke="#333" stroke-width="${entity.thickness}" stroke-linecap="round"/>`;
 		case "room":
 			return `<polygon points="${entity.polygon.map(([x, y]) => `${x},${y}`).join(" ")}" fill="#f0f0f0" stroke="#666" stroke-width="1"><title>${escapeXml(entity.name)}</title></polygon>`;
-		case "door":
-			return `<rect x="${entity.x - entity.width / 2}" y="${entity.y - 5}" width="${entity.width}" height="10" fill="#a8d8ea" stroke="#333" stroke-width="1" transform="rotate(${entity.rotation}, ${entity.x}, ${entity.y})"/>`;
+		case "door": {
+			const dw = entity.width;
+			const lines = [
+				`<g transform="rotate(${entity.rotation}, ${entity.x}, ${entity.y})">`,
+				`  <rect x="${entity.x - dw / 2}" y="${entity.y - 5}" width="${dw}" height="10" fill="white" stroke="none"/>`,
+				`  <line x1="${entity.x - dw / 2}" y1="${entity.y - 5}" x2="${entity.x - dw / 2}" y2="${entity.y + 5}" stroke="#333" stroke-width="1.5"/>`,
+				`  <line x1="${entity.x + dw / 2}" y1="${entity.y - 5}" x2="${entity.x + dw / 2}" y2="${entity.y + 5}" stroke="#333" stroke-width="1.5"/>`,
+			];
+			if (entity.doorStyle === "sliding") {
+				lines.push(
+					`  <line x1="${entity.x - dw / 2}" y1="${entity.y}" x2="${entity.x + dw / 2}" y2="${entity.y}" stroke="#333" stroke-width="2" stroke-linecap="round"/>`,
+					`  <line x1="${entity.x - dw / 2}" y1="${entity.y + 4}" x2="${entity.x + dw / 2}" y2="${entity.y + 4}" stroke="#999" stroke-width="1" stroke-dasharray="3 2"/>`,
+				);
+				if (entity.swing === "left") {
+					lines.push(`  <polyline points="${entity.x - dw / 4 + 4},${entity.y - 3} ${entity.x - dw / 4},${entity.y} ${entity.x - dw / 4 + 4},${entity.y + 3}" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`);
+				} else {
+					lines.push(`  <polyline points="${entity.x + dw / 4 - 4},${entity.y - 3} ${entity.x + dw / 4},${entity.y} ${entity.x + dw / 4 - 4},${entity.y + 3}" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`);
+				}
+			} else {
+				const sl = entity.swing === "left";
+				const hx = sl ? entity.x - dw / 2 : entity.x + dw / 2;
+				const hy = entity.y;
+				const tx = sl ? entity.x + dw / 2 : entity.x - dw / 2;
+				const ty = entity.y;
+				const sf = sl ? 1 : 0;
+				lines.push(
+					`  <line x1="${hx}" y1="${hy}" x2="${hx}" y2="${hy + dw}" stroke="#333" stroke-width="2" stroke-linecap="round"/>`,
+					`  <path d="M ${tx} ${ty} A ${dw} ${dw} 0 0 ${sf} ${hx} ${hy + dw}" fill="none" stroke="#999" stroke-width="1" stroke-dasharray="4 3"/>`,
+					`  <circle cx="${hx}" cy="${hy}" r="2.5" fill="#333"/>`,
+				);
+			}
+			lines.push(`</g>`);
+			return lines.join("\n");
+		}
 		case "window":
 			return `<rect x="${entity.x - entity.width / 2}" y="${entity.y - 3}" width="${entity.width}" height="6" fill="#87ceeb" stroke="#333" stroke-width="1" transform="rotate(${entity.rotation}, ${entity.x}, ${entity.y})"/>`;
 		case "light":

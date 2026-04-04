@@ -4,6 +4,13 @@ import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { polygonArea, polygonPerimeter } from "@/lib/geometry";
 import { formatArea, formatLength } from "@/lib/units";
@@ -77,6 +84,12 @@ export function Inspector({
 				)}
 				{(entity.type === "door" || entity.type === "window") && (
 					<OpeningFields
+						entity={entity}
+						onUpdate={(u) => onUpdate(entity.id, u)}
+					/>
+				)}
+				{entity.type === "door" && (
+					<DoorStyleFields
 						entity={entity}
 						onUpdate={(u) => onUpdate(entity.id, u)}
 					/>
@@ -271,6 +284,51 @@ function OpeningFields({
 				</div>
 			</div>
 		</>
+	);
+}
+
+function DoorStyleFields({
+	entity,
+	onUpdate,
+}: {
+	entity: DoorEntity;
+	onUpdate: (u: Partial<DoorEntity>) => void;
+}) {
+	return (
+		<div className="grid grid-cols-2 gap-2">
+			<div>
+				<Label className="text-xs">Style</Label>
+				<Select
+					value={entity.doorStyle ?? "regular"}
+					onValueChange={(v) =>
+						onUpdate({ doorStyle: v as "regular" | "sliding" })
+					}
+				>
+					<SelectTrigger className="h-7 text-xs">
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="regular">Regular</SelectItem>
+						<SelectItem value="sliding">Sliding</SelectItem>
+					</SelectContent>
+				</Select>
+			</div>
+			<div>
+				<Label className="text-xs">Swing</Label>
+				<Select
+					value={entity.swing}
+					onValueChange={(v) => onUpdate({ swing: v as "left" | "right" })}
+				>
+					<SelectTrigger className="h-7 text-xs">
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="left">Left</SelectItem>
+						<SelectItem value="right">Right</SelectItem>
+					</SelectContent>
+				</Select>
+			</div>
+		</div>
 	);
 }
 

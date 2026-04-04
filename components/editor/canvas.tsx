@@ -706,25 +706,134 @@ function EntityRenderer({
 					<title>{entity.name}</title>
 				</polygon>
 			);
-		case "door":
+		case "door": {
+			const doorW = entity.width;
+			const isSliding = entity.doorStyle === "sliding";
+			const stroke = isSelected ? SELECT_COLOR : "#333";
 			return (
 				<g
 					onMouseDown={onMouseDown}
 					onClick={onClick}
 					className="cursor-pointer"
+					transform={`rotate(${entity.rotation}, ${entity.x}, ${entity.y})`}
 				>
+					{/* Wall opening — white gap to clear the wall underneath */}
 					<rect
-						x={entity.x - entity.width / 2}
+						x={entity.x - doorW / 2}
 						y={entity.y - 5}
-						width={entity.width}
+						width={doorW}
 						height={10}
-						fill={isSelected ? SELECT_FILL_STRONG : "#a8d8ea"}
-						stroke={isSelected ? SELECT_COLOR : "#333"}
-						strokeWidth={isSelected ? 2 : 1}
-						transform={`rotate(${entity.rotation}, ${entity.x}, ${entity.y})`}
+						fill="white"
+						stroke="none"
 					/>
+					{/* Opening edges */}
+					<line
+						x1={entity.x - doorW / 2}
+						y1={entity.y - 5}
+						x2={entity.x - doorW / 2}
+						y2={entity.y + 5}
+						stroke={stroke}
+						strokeWidth={1.5}
+					/>
+					<line
+						x1={entity.x + doorW / 2}
+						y1={entity.y - 5}
+						x2={entity.x + doorW / 2}
+						y2={entity.y + 5}
+						stroke={stroke}
+						strokeWidth={1.5}
+					/>
+					{isSliding ? (
+						<>
+							{/* Sliding door — arrow showing slide direction */}
+							<line
+								x1={entity.x - doorW / 2}
+								y1={entity.y}
+								x2={entity.x + doorW / 2}
+								y2={entity.y}
+								stroke={stroke}
+								strokeWidth={isSelected ? 2.5 : 2}
+								strokeLinecap="round"
+							/>
+							{/* Dashed line showing pocket/track */}
+							<line
+								x1={entity.x - doorW / 2}
+								y1={entity.y + 4}
+								x2={entity.x + doorW / 2}
+								y2={entity.y + 4}
+								stroke={isSelected ? SELECT_COLOR : "#999"}
+								strokeWidth={1}
+								strokeDasharray="3 2"
+							/>
+							{/* Arrow indicating slide direction */}
+							{entity.swing === "left" ? (
+								<polyline
+									points={`${entity.x - doorW / 4 + 4},${entity.y - 3} ${entity.x - doorW / 4},${entity.y} ${entity.x - doorW / 4 + 4},${entity.y + 3}`}
+									fill="none"
+									stroke={stroke}
+									strokeWidth={1.5}
+									strokeLinecap="round"
+									strokeLinejoin="round"
+								/>
+							) : (
+								<polyline
+									points={`${entity.x + doorW / 4 - 4},${entity.y - 3} ${entity.x + doorW / 4},${entity.y} ${entity.x + doorW / 4 - 4},${entity.y + 3}`}
+									fill="none"
+									stroke={stroke}
+									strokeWidth={1.5}
+									strokeLinecap="round"
+									strokeLinejoin="round"
+								/>
+							)}
+						</>
+					) : (
+						<>
+							{/* Regular door — swing arc */}
+							{(() => {
+								const swingLeft = entity.swing === "left";
+								const hingeX = swingLeft
+									? entity.x - doorW / 2
+									: entity.x + doorW / 2;
+								const hingeY = entity.y;
+								const tipX = swingLeft
+									? entity.x + doorW / 2
+									: entity.x - doorW / 2;
+								const tipY = entity.y;
+								const arcEndX = hingeX;
+								const arcEndY = hingeY + doorW;
+								const sweepFlag = swingLeft ? 1 : 0;
+								return (
+									<>
+										<line
+											x1={hingeX}
+											y1={hingeY}
+											x2={hingeX}
+											y2={hingeY + doorW}
+											stroke={stroke}
+											strokeWidth={isSelected ? 2.5 : 2}
+											strokeLinecap="round"
+										/>
+										<path
+											d={`M ${tipX} ${tipY} A ${doorW} ${doorW} 0 0 ${sweepFlag} ${arcEndX} ${arcEndY}`}
+											fill="none"
+											stroke={isSelected ? SELECT_COLOR : "#999"}
+											strokeWidth={isSelected ? 1.5 : 1}
+											strokeDasharray="4 3"
+										/>
+										<circle
+											cx={hingeX}
+											cy={hingeY}
+											r={2.5}
+											fill={stroke}
+										/>
+									</>
+								);
+							})()}
+						</>
+					)}
 				</g>
 			);
+		}
 		case "window":
 			return (
 				<g
