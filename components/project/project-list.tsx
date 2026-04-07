@@ -33,7 +33,8 @@ export function ProjectList() {
 					body: text,
 				});
 				if (!res.ok) {
-					toast.error("Failed to import project");
+					const err = await res.json().catch(() => null);
+					toast.error(err?.error ?? "Failed to import project");
 					return;
 				}
 				const { id } = await res.json();

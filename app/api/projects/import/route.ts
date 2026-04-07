@@ -1,5 +1,10 @@
 import type { NextRequest } from "next/server";
-import { createFloor, createProject, getProject } from "@/lib/storage";
+import {
+	createFloor,
+	createProject,
+	getProject,
+	updateProject,
+} from "@/lib/storage";
 import type { Floor } from "@/types/floor";
 import type { Project } from "@/types/project";
 
@@ -29,6 +34,8 @@ export async function POST(request: NextRequest) {
 			// Project doesn't exist, we can use the original id
 		}
 
+		const originalFloorOrder = body.project.floorOrder ?? [];
+
 		await createProject({
 			...body.project,
 			id: projectId,
@@ -41,10 +48,20 @@ export async function POST(request: NextRequest) {
 			}
 		}
 
+		// Restore original floor order (createFloor appends in iteration order,
+		// but the original project may have had a different ordering)
+		if (originalFloorOrder.length > 0) {
+			await updateProject(projectId, { floorOrder: originalFloorOrder });
+		}
+
 		return Response.json({ id: projectId }, { status: 201 });
-	} catch {
+	} catch (err) {
+		console.error("Import failed:", err);
 		return Response.json(
-			{ error: "Failed to import project" },
+			{
+				error:
+					err instanceof Error ? err.message : "Failed to import project",
+			},
 			{ status: 500 },
 		);
 	}
