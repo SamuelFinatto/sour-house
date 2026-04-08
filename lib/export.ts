@@ -24,9 +24,13 @@ function renderEntityToSvg(entity: Entity): string {
 					`  <line x1="${entity.x - dw / 2}" y1="${entity.y + 4}" x2="${entity.x + dw / 2}" y2="${entity.y + 4}" stroke="#999" stroke-width="1" stroke-dasharray="3 2"/>`,
 				);
 				if (entity.swing === "left") {
-					lines.push(`  <polyline points="${entity.x - dw / 4 + 4},${entity.y - 3} ${entity.x - dw / 4},${entity.y} ${entity.x - dw / 4 + 4},${entity.y + 3}" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`);
+					lines.push(
+						`  <polyline points="${entity.x - dw / 4 + 4},${entity.y - 3} ${entity.x - dw / 4},${entity.y} ${entity.x - dw / 4 + 4},${entity.y + 3}" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`,
+					);
 				} else {
-					lines.push(`  <polyline points="${entity.x + dw / 4 - 4},${entity.y - 3} ${entity.x + dw / 4},${entity.y} ${entity.x + dw / 4 - 4},${entity.y + 3}" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`);
+					lines.push(
+						`  <polyline points="${entity.x + dw / 4 - 4},${entity.y - 3} ${entity.x + dw / 4},${entity.y} ${entity.x + dw / 4 - 4},${entity.y + 3}" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`,
+					);
 				}
 			} else {
 				const sl = entity.swing === "left";

@@ -10,9 +10,7 @@ export default function Home() {
 				<Logo className="h-9 w-9 text-primary" />
 				<div>
 					<h1 className="text-xl font-semibold tracking-tight">Sour House</h1>
-					<p className="text-sm text-muted-foreground">
-						House planning tool
-					</p>
+					<p className="text-sm text-muted-foreground">House planning tool</p>
 				</div>
 			</div>
 			<Suspense

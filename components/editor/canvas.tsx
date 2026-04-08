@@ -69,11 +69,17 @@ export function Canvas({
 		originY: number;
 	} | null>(null);
 	// Room vertex dragging state
+	// Room vertex dragging state
 	const [vertexDrag, setVertexDrag] = useState<{
 		entityId: string;
 		vertexIndex: number;
 		startX: number;
 		startY: number;
+	} | null>(null);
+	// Measure tool: persisted measurement after completing a measurement
+	const [measurement, setMeasurement] = useState<{
+		start: { x: number; y: number };
+		end: { x: number; y: number };
 	} | null>(null);
 
 	const DRAG_THRESHOLD = 5;
@@ -86,6 +92,7 @@ export function Canvas({
 		setDrawMode(null);
 		setDragEntity(null);
 		setVertexDrag(null);
+		setMeasurement(null);
 	}, [activeTool]);
 
 	const getCanvasPoint = useCallback(
@@ -102,7 +109,8 @@ export function Canvas({
 		activeTool === "wall" ||
 		activeTool === "room" ||
 		activeTool === "door" ||
-		activeTool === "window";
+		activeTool === "window" ||
+		activeTool === "measure";
 	const isPlaceTool =
 		activeTool === "light" ||
 		activeTool === "outlet" ||
@@ -117,6 +125,14 @@ export function Canvas({
 		start: { x: number; y: number },
 		end: { x: number; y: number },
 	) {
+		if (activeTool === "measure") {
+			if (start.x === end.x && start.y === end.y) return;
+			setMeasurement({ start, end });
+			setDrawStart(null);
+			setDrawCurrent(null);
+			setDrawMode(null);
+			return;
+		}
 		if (activeTool === "wall") {
 			if (start.x === end.x && start.y === end.y) return;
 			onAddEntity({
@@ -571,8 +587,7 @@ export function Canvas({
 				{activeTool === "select" &&
 					visibleEntities
 						.filter(
-							(e) =>
-								e.type === "room" && selectedEntityIds.includes(e.id),
+							(e) => e.type === "room" && selectedEntityIds.includes(e.id),
 						)
 						.map((entity) =>
 							entity.type === "room"
@@ -638,6 +653,24 @@ export function Canvas({
 						stroke="#2563eb"
 						strokeWidth={1}
 						strokeDasharray="4 2"
+					/>
+				)}
+
+				{/* Measure tool preview (while drawing) */}
+				{drawStart && drawCurrent && activeTool === "measure" && (
+					<MeasureOverlay
+						start={drawStart}
+						end={drawCurrent}
+						zoom={viewport.zoom}
+					/>
+				)}
+
+				{/* Measure tool result (after completing measurement) */}
+				{measurement && activeTool === "measure" && (
+					<MeasureOverlay
+						start={measurement.start}
+						end={measurement.end}
+						zoom={viewport.zoom}
 					/>
 				)}
 			</g>
@@ -820,12 +853,7 @@ function EntityRenderer({
 											strokeWidth={isSelected ? 1.5 : 1}
 											strokeDasharray="4 3"
 										/>
-										<circle
-											cx={hingeX}
-											cy={hingeY}
-											r={2.5}
-											fill={stroke}
-										/>
+										<circle cx={hingeX} cy={hingeY} r={2.5} fill={stroke} />
 									</>
 								);
 							})()}
@@ -1093,4 +1121,93 @@ function EntityRenderer({
 				</g>
 			);
 	}
+}
+
+function MeasureOverlay({
+	start,
+	end,
+	zoom,
+}: {
+	start: { x: number; y: number };
+	end: { x: number; y: number };
+	zoom: number;
+}) {
+	const dx = end.x - start.x;
+	const dy = end.y - start.y;
+	const distanceCm = Math.sqrt(dx * dx + dy * dy);
+	const distanceM = distanceCm / 100;
+	const label =
+		distanceCm >= 100
+			? `${distanceM.toFixed(2)} m`
+			: `${Math.round(distanceCm)} cm`;
+
+	const midX = (start.x + end.x) / 2;
+	const midY = (start.y + end.y) / 2;
+	// Offset the label perpendicular to the line
+	const perpX = -dy / (distanceCm || 1);
+	const perpY = dx / (distanceCm || 1);
+	const labelOffset = 14 / zoom;
+	const labelX = midX + perpX * labelOffset;
+	const labelY = midY + perpY * labelOffset;
+
+	const endpointR = 4 / zoom;
+	const fontSize = 12 / zoom;
+
+	return (
+		<g>
+			{/* Measurement line */}
+			<line
+				x1={start.x}
+				y1={start.y}
+				x2={end.x}
+				y2={end.y}
+				stroke="#e11d48"
+				strokeWidth={1.5 / zoom}
+				strokeDasharray={`${6 / zoom} ${3 / zoom}`}
+			/>
+			{/* Start point */}
+			<circle
+				cx={start.x}
+				cy={start.y}
+				r={endpointR}
+				fill="#e11d48"
+				stroke="white"
+				strokeWidth={1 / zoom}
+			/>
+			{/* End point */}
+			<circle
+				cx={end.x}
+				cy={end.y}
+				r={endpointR}
+				fill="#e11d48"
+				stroke="white"
+				strokeWidth={1 / zoom}
+			/>
+			{/* Distance label background */}
+			{distanceCm > 0 && (
+				<>
+					<rect
+						x={labelX - label.length * fontSize * 0.35}
+						y={labelY - fontSize * 0.7}
+						width={label.length * fontSize * 0.7}
+						height={fontSize * 1.4}
+						fill="white"
+						stroke="#e11d48"
+						strokeWidth={1 / zoom}
+						rx={3 / zoom}
+					/>
+					<text
+						x={labelX}
+						y={labelY + fontSize * 0.35}
+						textAnchor="middle"
+						fontSize={fontSize}
+						fill="#e11d48"
+						fontWeight="600"
+					>
+						{label}
+					</text>
+				</>
+			)}
+		</g>
+	);
 }

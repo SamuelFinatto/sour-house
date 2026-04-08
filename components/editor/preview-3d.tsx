@@ -36,7 +36,12 @@ function AutoFitCamera({
 	centerY,
 	centerZ,
 	size,
-}: { centerX: number; centerY: number; centerZ: number; size: number }) {
+}: {
+	centerX: number;
+	centerY: number;
+	centerZ: number;
+	size: number;
+}) {
 	const { camera } = useThree();
 
 	useEffect(() => {
@@ -56,7 +61,10 @@ function AutoFitCamera({
 function Scene({
 	objects,
 	bbox,
-}: { objects: Object3D[]; bbox: ReturnType<typeof getSceneBBox> }) {
+}: {
+	objects: Object3D[];
+	bbox: ReturnType<typeof getSceneBBox>;
+}) {
 	return (
 		<>
 			<ambientLight intensity={0.6} />
@@ -83,14 +91,11 @@ export function Preview3D({ projectId, floorId }: Preview3DProps) {
 	const handleSave = useCallback(async () => {
 		if (!floor) return;
 		try {
-			const res = await fetch(
-				`/api/projects/${projectId}/floors/${floorId}`,
-				{
-					method: "PUT",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify(floor),
-				},
-			);
+			const res = await fetch(`/api/projects/${projectId}/floors/${floorId}`, {
+				method: "PUT",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(floor),
+			});
 			if (!res.ok) throw new Error("Failed to save");
 			mutate();
 			toast.success("Floor saved");

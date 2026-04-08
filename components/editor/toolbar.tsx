@@ -15,6 +15,7 @@ import {
 	MessageSquare,
 	Minus,
 	MousePointer2,
+	PenLine,
 	Plug,
 	Plus,
 	Redo2,
@@ -55,10 +56,11 @@ const coreTools: { tool: Tool; icon: React.ReactNode; label: string }[] = [
 		label: "Select",
 	},
 	{ tool: "pan", icon: <Hand className="h-4 w-4" />, label: "Pan" },
+	{ tool: "measure", icon: <Ruler className="h-4 w-4" />, label: "Measure" },
 ];
 
 const structureTools: { tool: Tool; icon: React.ReactNode; label: string }[] = [
-	{ tool: "wall", icon: <Ruler className="h-4 w-4" />, label: "Wall" },
+	{ tool: "wall", icon: <PenLine className="h-4 w-4" />, label: "Wall" },
 	{ tool: "room", icon: <Square className="h-4 w-4" />, label: "Room" },
 	{ tool: "door", icon: <DoorOpen className="h-4 w-4" />, label: "Door" },
 	{ tool: "window", icon: <AppWindow className="h-4 w-4" />, label: "Window" },

@@ -59,8 +59,7 @@ export async function POST(request: NextRequest) {
 		console.error("Import failed:", err);
 		return Response.json(
 			{
-				error:
-					err instanceof Error ? err.message : "Failed to import project",
+				error: err instanceof Error ? err.message : "Failed to import project",
 			},
 			{ status: 500 },
 		);
