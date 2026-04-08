@@ -10,6 +10,7 @@ import {
 	MapPin,
 	Pencil,
 	Trash2,
+	Upload,
 	X,
 } from "lucide-react";
 import Link from "next/link";
@@ -182,6 +183,39 @@ export function FloorList({ projectId }: FloorListProps) {
 		}, 100);
 	}
 
+	function handleImportFloor() {
+		const input = document.createElement("input");
+		input.type = "file";
+		input.accept = ".json";
+		input.onchange = async () => {
+			const file = input.files?.[0];
+			if (!file) return;
+			try {
+				const text = await file.text();
+				const data = JSON.parse(text);
+				if (!data.id || !data.name || !Array.isArray(data.entities)) {
+					toast.error("Invalid floor file");
+					return;
+				}
+				const res = await fetch(`/api/projects/${projectId}/floors`, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: text,
+				});
+				if (!res.ok) {
+					toast.error("Failed to import floor");
+					return;
+				}
+				mutate();
+				mutateFloors();
+				toast.success(`Imported floor "${data.name}"`);
+			} catch {
+				toast.error("Failed to parse floor file");
+			}
+		};
+		input.click();
+	}
+
 	if (isLoading) {
 		return (
 			<div className="space-y-6">
@@ -264,6 +298,10 @@ export function FloorList({ projectId }: FloorListProps) {
 						)}
 					</div>
 					<div className="flex items-center gap-2">
+						<Button variant="outline" size="sm" onClick={handleImportFloor}>
+							<Upload className="mr-2 h-3 w-3" />
+							Import Floor
+						</Button>
 						<Button variant="outline" size="sm" onClick={handleExportProject}>
 							<Download className="mr-2 h-3 w-3" />
 							Export
