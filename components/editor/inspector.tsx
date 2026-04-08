@@ -1,6 +1,9 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import { ImagePlus, Trash2, X } from "lucide-react";
+import { useRef, useState } from "react";
+import { toast } from "sonner";
+import { ImageViewerDialog } from "@/components/editor/image-viewer-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +22,7 @@ import type {
 	Entity,
 	FurnitureEntity,
 	RoomEntity,
+	RoomImage,
 	WallEntity,
 	WindowEntity,
 } from "@/types/entities";
@@ -26,6 +30,7 @@ import type {
 interface InspectorProps {
 	entity: Entity | null;
 	units: string;
+	projectId: string;
 	onUpdate: (id: string, updates: Partial<Entity>) => void;
 	onDelete: (id: string) => void;
 }
@@ -33,6 +38,7 @@ interface InspectorProps {
 export function Inspector({
 	entity,
 	units,
+	projectId,
 	onUpdate,
 	onDelete,
 }: InspectorProps) {
@@ -79,6 +85,7 @@ export function Inspector({
 					<RoomFields
 						entity={entity}
 						units={units}
+						projectId={projectId}
 						onUpdate={(u) => onUpdate(entity.id, u)}
 					/>
 				)}
@@ -197,14 +204,54 @@ function WallFields({
 function RoomFields({
 	entity,
 	units,
+	projectId,
 	onUpdate,
 }: {
 	entity: RoomEntity;
 	units: string;
+	projectId: string;
 	onUpdate: (u: Partial<RoomEntity>) => void;
 }) {
 	const area = polygonArea(entity.polygon);
 	const perimeter = polygonPerimeter(entity.polygon);
+	const fileRef = useRef<HTMLInputElement>(null);
+	const [uploading, setUploading] = useState(false);
+	const [viewerImage, setViewerImage] = useState<RoomImage | null>(null);
+
+	const images = entity.images ?? [];
+
+	async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+		const file = e.target.files?.[0];
+		if (!file) return;
+		setUploading(true);
+		try {
+			const form = new FormData();
+			form.append("file", file);
+			const res = await fetch(`/api/projects/${projectId}/assets`, {
+				method: "POST",
+				body: form,
+			});
+			if (!res.ok) throw new Error("Upload failed");
+			const { assetId } = await res.json();
+			const name = file.name.replace(/\.[^.]+$/, "");
+			onUpdate({ images: [...images, { assetId, name }] });
+		} catch {
+			toast.error("Failed to upload image");
+		} finally {
+			setUploading(false);
+			if (fileRef.current) fileRef.current.value = "";
+		}
+	}
+
+	function handleRemove(index: number) {
+		onUpdate({ images: images.filter((_, i) => i !== index) });
+	}
+
+	function handleRename(index: number, name: string) {
+		onUpdate({
+			images: images.map((img, i) => (i === index ? { ...img, name } : img)),
+		});
+	}
 
 	return (
 		<>
@@ -230,6 +277,75 @@ function RoomFields({
 					</p>
 				</div>
 			</div>
+
+			<Separator />
+
+			<div>
+				<div className="flex items-center justify-between mb-1">
+					<Label className="text-xs">Images</Label>
+					<input
+						ref={fileRef}
+						type="file"
+						accept="image/png,image/jpeg,image/webp,image/svg+xml"
+						onChange={handleUpload}
+						className="hidden"
+					/>
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						onClick={() => fileRef.current?.click()}
+						disabled={uploading}
+						title="Add image"
+					>
+						<ImagePlus className="h-3.5 w-3.5" />
+					</Button>
+				</div>
+				{images.length === 0 ? (
+					<p className="text-xs text-muted-foreground">No images</p>
+				) : (
+					<div className="space-y-2">
+						{images.map((img, i) => (
+							<div key={img.assetId} className="space-y-1">
+								<div className="flex items-center gap-1">
+									<Input
+										value={img.name}
+										onChange={(e) => handleRename(i, e.target.value)}
+										className="h-6 text-xs flex-1"
+									/>
+									<Button
+										variant="ghost"
+										size="icon-sm"
+										onClick={() => handleRemove(i)}
+										title="Remove image"
+									>
+										<X className="h-3 w-3" />
+									</Button>
+								</div>
+								<button
+									type="button"
+									className="w-full rounded border overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary transition-shadow"
+									onClick={() => setViewerImage(img)}
+								>
+									<img
+										src={`/api/projects/${projectId}/assets/${img.assetId}`}
+										alt={img.name}
+										className="w-full h-24 object-contain bg-muted"
+									/>
+								</button>
+							</div>
+						))}
+					</div>
+				)}
+			</div>
+
+			{viewerImage && (
+				<ImageViewerDialog
+					open
+					title={viewerImage.name}
+					src={`/api/projects/${projectId}/assets/${viewerImage.assetId}`}
+					onClose={() => setViewerImage(null)}
+				/>
+			)}
 		</>
 	);
 }

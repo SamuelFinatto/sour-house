@@ -43,11 +43,17 @@ export interface WallEntity extends BaseEntity {
 	thickness: number;
 }
 
+export interface RoomImage {
+	assetId: string;
+	name: string;
+}
+
 export interface RoomEntity extends BaseEntity {
 	type: "room";
 	layer: "structure";
 	name: string;
 	polygon: [number, number][];
+	images?: RoomImage[];
 }
 
 export interface DoorEntity extends BaseEntity {

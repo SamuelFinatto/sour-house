@@ -315,6 +315,7 @@ export function FloorEditor({ projectId, floorId }: FloorEditorProps) {
 					<Inspector
 						entity={selectedEntity}
 						units={floor.units}
+						projectId={projectId}
 						onUpdate={editor.updateEntity}
 						onDelete={editor.deleteEntity}
 					/>
