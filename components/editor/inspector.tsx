@@ -507,6 +507,26 @@ function StairsFields({
 		<>
 			<div className="grid grid-cols-2 gap-2">
 				<div>
+					<Label className="text-xs">X</Label>
+					<Input
+						type="number"
+						value={entity.x}
+						onChange={(e) => onUpdate({ x: Number(e.target.value) })}
+						className="h-7 text-xs"
+					/>
+				</div>
+				<div>
+					<Label className="text-xs">Y</Label>
+					<Input
+						type="number"
+						value={entity.y}
+						onChange={(e) => onUpdate({ y: Number(e.target.value) })}
+						className="h-7 text-xs"
+					/>
+				</div>
+			</div>
+			<div className="grid grid-cols-2 gap-2">
+				<div>
 					<Label className="text-xs">Width</Label>
 					<Input
 						type="number"

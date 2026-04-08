@@ -76,6 +76,23 @@ export function Canvas({
 		startX: number;
 		startY: number;
 	} | null>(null);
+	// Resize handle dragging state
+	const [resizeDrag, setResizeDrag] = useState<{
+		entityId: string;
+		handle: "tl" | "tr" | "bl" | "br";
+		startX: number;
+		startY: number;
+		origX: number;
+		origY: number;
+		origW: number;
+		origH: number;
+	} | null>(null);
+	// Rotate handle dragging state
+	const [rotateDrag, setRotateDrag] = useState<{
+		entityId: string;
+		centerX: number;
+		centerY: number;
+	} | null>(null);
 	// Measure tool: persisted measurement after completing a measurement
 	const [measurement, setMeasurement] = useState<{
 		start: { x: number; y: number };
@@ -92,6 +109,8 @@ export function Canvas({
 		setDrawMode(null);
 		setDragEntity(null);
 		setVertexDrag(null);
+		setResizeDrag(null);
+		setRotateDrag(null);
 		setMeasurement(null);
 	}, [activeTool]);
 
@@ -346,7 +365,7 @@ export function Canvas({
 			return;
 		}
 
-		// Room vertex dragging
+		// Room vertex / wall endpoint dragging
 		if (vertexDrag) {
 			const pt = getCanvasPoint(e);
 			const entity = entities.find((ent) => ent.id === vertexDrag.entityId);
@@ -355,7 +374,89 @@ export function Canvas({
 					i === vertexDrag.vertexIndex ? ([pt.x, pt.y] as [number, number]) : p,
 				);
 				onUpdateEntity(entity.id, { polygon: newPolygon } as Partial<Entity>);
+			} else if (entity?.type === "wall") {
+				if (vertexDrag.vertexIndex === 0) {
+					onUpdateEntity(entity.id, {
+						x1: pt.x,
+						y1: pt.y,
+					} as Partial<Entity>);
+				} else {
+					onUpdateEntity(entity.id, {
+						x2: pt.x,
+						y2: pt.y,
+					} as Partial<Entity>);
+				}
 			}
+			return;
+		}
+
+		// Resize handle dragging
+		if (resizeDrag) {
+			const pt = getCanvasPoint(e);
+			const entity = entities.find((ent) => ent.id === resizeDrag.entityId);
+			if (!entity) return;
+
+			// Door/window: resize width by moving endpoint
+			if (entity.type === "door" || entity.type === "window") {
+				const dx = pt.x - entity.x;
+				const dy = pt.y - entity.y;
+				const dist = Math.sqrt(dx * dx + dy * dy);
+				const newWidth = Math.max(20, dist * 2);
+				const newRotation = (Math.atan2(dy, dx) * 180) / Math.PI;
+				onUpdateEntity(entity.id, {
+					width: newWidth,
+					rotation: Math.round(newRotation),
+				} as Partial<Entity>);
+				return;
+			}
+
+			// Box entities: resize by corner
+			const dx = pt.x - resizeDrag.startX;
+			const dy = pt.y - resizeDrag.startY;
+			const h = resizeDrag.handle;
+			let newX = resizeDrag.origX;
+			let newY = resizeDrag.origY;
+			let newW = resizeDrag.origW;
+			let newH = resizeDrag.origH;
+
+			if (h === "tl") {
+				newX = resizeDrag.origX + dx;
+				newY = resizeDrag.origY + dy;
+				newW = Math.max(20, resizeDrag.origW - dx);
+				newH = Math.max(20, resizeDrag.origH - dy);
+			} else if (h === "tr") {
+				newY = resizeDrag.origY + dy;
+				newW = Math.max(20, resizeDrag.origW + dx);
+				newH = Math.max(20, resizeDrag.origH - dy);
+			} else if (h === "bl") {
+				newX = resizeDrag.origX + dx;
+				newW = Math.max(20, resizeDrag.origW - dx);
+				newH = Math.max(20, resizeDrag.origH + dy);
+			} else {
+				newW = Math.max(20, resizeDrag.origW + dx);
+				newH = Math.max(20, resizeDrag.origH + dy);
+			}
+
+			onUpdateEntity(resizeDrag.entityId, {
+				x: newX,
+				y: newY,
+				width: newW,
+				height: newH,
+			} as Partial<Entity>);
+			return;
+		}
+
+		// Rotate handle dragging
+		if (rotateDrag) {
+			const pt = getCanvasPoint(e);
+			const angle =
+				(Math.atan2(pt.y - rotateDrag.centerY, pt.x - rotateDrag.centerX) *
+					180) /
+					Math.PI +
+				90;
+			onUpdateEntity(rotateDrag.entityId, {
+				rotation: Math.round(angle),
+			} as Partial<Entity>);
 			return;
 		}
 
@@ -419,6 +520,18 @@ export function Canvas({
 		// Finish vertex drag
 		if (vertexDrag) {
 			setVertexDrag(null);
+			return;
+		}
+
+		// Finish resize drag
+		if (resizeDrag) {
+			setResizeDrag(null);
+			return;
+		}
+
+		// Finish rotate drag
+		if (rotateDrag) {
+			setRotateDrag(null);
 			return;
 		}
 
@@ -628,6 +741,207 @@ export function Canvas({
 									))
 								: null,
 						)}
+
+				{/* Box entity resize & rotate handles */}
+				{activeTool === "select" &&
+					visibleEntities
+						.filter(
+							(e) =>
+								selectedEntityIds.includes(e.id) &&
+								"width" in e &&
+								"height" in e &&
+								"rotation" in e &&
+								"x" in e &&
+								"y" in e,
+						)
+						.map((entity) => {
+							const ent = entity as Entity & {
+								x: number;
+								y: number;
+								width: number;
+								height: number;
+								rotation: number;
+							};
+							const cx = ent.x + ent.width / 2;
+							const cy = ent.y + ent.height / 2;
+							const r = 5 / viewport.zoom;
+							const rotHandleDist = 25 / viewport.zoom;
+							const corners: {
+								handle: "tl" | "tr" | "bl" | "br";
+								hx: number;
+								hy: number;
+							}[] = [
+								{ handle: "tl", hx: ent.x, hy: ent.y },
+								{ handle: "tr", hx: ent.x + ent.width, hy: ent.y },
+								{ handle: "bl", hx: ent.x, hy: ent.y + ent.height },
+								{
+									handle: "br",
+									hx: ent.x + ent.width,
+									hy: ent.y + ent.height,
+								},
+							];
+							return (
+								<g
+									key={`handles-${entity.id}`}
+									transform={`rotate(${ent.rotation}, ${cx}, ${cy})`}
+								>
+									{corners.map(({ handle, hx, hy }) => (
+										<rect
+											key={`rsz-${entity.id}-${handle}`}
+											x={hx - r}
+											y={hy - r}
+											width={r * 2}
+											height={r * 2}
+											fill="white"
+											stroke="#2563eb"
+											strokeWidth={1.5 / viewport.zoom}
+											className="cursor-nwse-resize"
+											onMouseDown={(e) => {
+												e.stopPropagation();
+												const pt = getCanvasPoint(e);
+												setResizeDrag({
+													entityId: entity.id,
+													handle,
+													startX: pt.x,
+													startY: pt.y,
+													origX: ent.x,
+													origY: ent.y,
+													origW: ent.width,
+													origH: ent.height,
+												});
+											}}
+										/>
+									))}
+									{/* Rotation handle */}
+									<line
+										x1={cx}
+										y1={ent.y}
+										x2={cx}
+										y2={ent.y - rotHandleDist}
+										stroke="#2563eb"
+										strokeWidth={1 / viewport.zoom}
+									/>
+									<circle
+										cx={cx}
+										cy={ent.y - rotHandleDist}
+										r={r}
+										fill="white"
+										stroke="#2563eb"
+										strokeWidth={1.5 / viewport.zoom}
+										className="cursor-grab"
+										onMouseDown={(e) => {
+											e.stopPropagation();
+											setRotateDrag({
+												entityId: entity.id,
+												centerX: cx,
+												centerY: cy,
+											});
+										}}
+									/>
+								</g>
+							);
+						})}
+
+				{/* Wall endpoint handles */}
+				{activeTool === "select" &&
+					visibleEntities
+						.filter(
+							(e) => e.type === "wall" && selectedEntityIds.includes(e.id),
+						)
+						.map((entity) => {
+							if (entity.type !== "wall") return null;
+							const r = 5 / viewport.zoom;
+							const endpoints: {
+								key: string;
+								px: number;
+								py: number;
+								fields: Record<string, number>;
+							}[] = [
+								{
+									key: "p1",
+									px: entity.x1,
+									py: entity.y1,
+									fields: { x1: 1, y1: 1 },
+								},
+								{
+									key: "p2",
+									px: entity.x2,
+									py: entity.y2,
+									fields: { x2: 1, y2: 1 },
+								},
+							];
+							return endpoints.map(({ key, px, py, fields }) => (
+								<circle
+									key={`wall-ep-${entity.id}-${key}`}
+									cx={px}
+									cy={py}
+									r={r}
+									fill="white"
+									stroke="#2563eb"
+									strokeWidth={1.5 / viewport.zoom}
+									className="cursor-move"
+									onMouseDown={(e) => {
+										e.stopPropagation();
+										const pt = getCanvasPoint(e);
+										setVertexDrag({
+											entityId: entity.id,
+											vertexIndex: fields.x1 ? 0 : 1,
+											startX: pt.x,
+											startY: pt.y,
+										});
+									}}
+								/>
+							));
+						})}
+
+				{/* Door/Window width handles */}
+				{activeTool === "select" &&
+					visibleEntities
+						.filter(
+							(e) =>
+								(e.type === "door" || e.type === "window") &&
+								selectedEntityIds.includes(e.id),
+						)
+						.map((entity) => {
+							if (entity.type !== "door" && entity.type !== "window")
+								return null;
+							const r = 5 / viewport.zoom;
+							const rad = (entity.rotation * Math.PI) / 180;
+							const hw = entity.width / 2;
+							const p1x = entity.x - hw * Math.cos(rad);
+							const p1y = entity.y - hw * Math.sin(rad);
+							const p2x = entity.x + hw * Math.cos(rad);
+							const p2y = entity.y + hw * Math.sin(rad);
+							return [
+								{ key: "e1", px: p1x, py: p1y },
+								{ key: "e2", px: p2x, py: p2y },
+							].map(({ key, px, py }) => (
+								<circle
+									key={`op-ep-${entity.id}-${key}`}
+									cx={px}
+									cy={py}
+									r={r}
+									fill="white"
+									stroke="#2563eb"
+									strokeWidth={1.5 / viewport.zoom}
+									className="cursor-ew-resize"
+									onMouseDown={(e) => {
+										e.stopPropagation();
+										const pt = getCanvasPoint(e);
+										setResizeDrag({
+											entityId: entity.id,
+											handle: key === "e1" ? "tl" : "br",
+											startX: pt.x,
+											startY: pt.y,
+											origX: entity.x,
+											origY: entity.y,
+											origW: entity.width,
+											origH: 0,
+										});
+									}}
+								/>
+							));
+						})}
 
 				{/* Draw preview */}
 				{drawStart && drawCurrent && activeTool === "wall" && (
