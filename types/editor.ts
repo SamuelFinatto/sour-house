@@ -16,6 +16,7 @@ export type Tool =
 	| "toilet"
 	| "shower"
 	| "bathtub"
+	| "stairs"
 	| "measure";
 
 export interface Viewport {

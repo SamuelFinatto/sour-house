@@ -69,6 +69,11 @@ function entityLabel(entity: Entity): string {
 			return entity.label || "Shower";
 		case "bathtub":
 			return entity.label || "Bathtub";
+		case "stairs":
+			return (
+				entity.label ||
+				(entity.direction === "up" ? "Stairs Up" : "Stairs Down")
+			);
 	}
 }
 

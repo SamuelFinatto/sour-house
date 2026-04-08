@@ -96,6 +96,24 @@ function renderEntityToSvg(entity: Entity): string {
 				`  <text x="${entity.x + entity.width / 2}" y="${entity.y + entity.height + 12}" text-anchor="middle" font-size="9" fill="#555">${escapeXml(entity.label || "Bathtub")}</text>`,
 				`</g>`,
 			].join("\n");
+		case "stairs": {
+			const stepCount = Math.max(3, Math.round(entity.height / 25));
+			const stepH = entity.height / stepCount;
+			const lines = [
+				`<g transform="rotate(${entity.rotation}, ${entity.x + entity.width / 2}, ${entity.y + entity.height / 2})">`,
+				`  <rect x="${entity.x}" y="${entity.y}" width="${entity.width}" height="${entity.height}" fill="#f0ece4" stroke="#8b7355" stroke-width="1.5"/>`,
+			];
+			for (let i = 1; i < stepCount; i++) {
+				lines.push(
+					`  <line x1="${entity.x}" y1="${entity.y + stepH * i}" x2="${entity.x + entity.width}" y2="${entity.y + stepH * i}" stroke="#8b7355" stroke-width="0.8"/>`,
+				);
+			}
+			lines.push(
+				`  <text x="${entity.x + entity.width / 2}" y="${entity.y + entity.height + 12}" text-anchor="middle" font-size="9" fill="#555">${escapeXml(entity.label || (entity.direction === "up" ? "Up" : "Down"))}</text>`,
+				`</g>`,
+			);
+			return lines.join("\n");
+		}
 	}
 }
 

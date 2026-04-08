@@ -10,7 +10,8 @@ export type Entity =
 	| SinkEntity
 	| ToiletEntity
 	| ShowerEntity
-	| BathtubEntity;
+	| BathtubEntity
+	| StairsEntity;
 
 export type EntityType =
 	| "wall"
@@ -24,7 +25,8 @@ export type EntityType =
 	| "sink"
 	| "toilet"
 	| "shower"
-	| "bathtub";
+	| "bathtub"
+	| "stairs";
 
 interface BaseEntity {
 	id: string;
@@ -154,5 +156,17 @@ export interface BathtubEntity extends BaseEntity {
 	width: number;
 	height: number;
 	rotation: number;
+	label?: string;
+}
+
+export interface StairsEntity extends BaseEntity {
+	type: "stairs";
+	layer: "structure";
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+	rotation: number;
+	direction: "up" | "down";
 	label?: string;
 }

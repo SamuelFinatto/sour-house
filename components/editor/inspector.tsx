@@ -23,6 +23,7 @@ import type {
 	FurnitureEntity,
 	RoomEntity,
 	RoomImage,
+	StairsEntity,
 	WallEntity,
 	WindowEntity,
 } from "@/types/entities";
@@ -103,6 +104,12 @@ export function Inspector({
 				)}
 				{entity.type === "furniture" && (
 					<FurnitureFields
+						entity={entity}
+						onUpdate={(u) => onUpdate(entity.id, u)}
+					/>
+				)}
+				{entity.type === "stairs" && (
+					<StairsFields
 						entity={entity}
 						onUpdate={(u) => onUpdate(entity.id, u)}
 					/>
@@ -484,6 +491,73 @@ function FurnitureFields({
 						className="h-7 text-xs"
 					/>
 				</div>
+			</div>
+		</>
+	);
+}
+
+function StairsFields({
+	entity,
+	onUpdate,
+}: {
+	entity: StairsEntity;
+	onUpdate: (u: Partial<StairsEntity>) => void;
+}) {
+	return (
+		<>
+			<div className="grid grid-cols-2 gap-2">
+				<div>
+					<Label className="text-xs">Width</Label>
+					<Input
+						type="number"
+						value={entity.width}
+						onChange={(e) => onUpdate({ width: Number(e.target.value) })}
+						className="h-7 text-xs"
+					/>
+				</div>
+				<div>
+					<Label className="text-xs">Height</Label>
+					<Input
+						type="number"
+						value={entity.height}
+						onChange={(e) => onUpdate({ height: Number(e.target.value) })}
+						className="h-7 text-xs"
+					/>
+				</div>
+			</div>
+			<div className="grid grid-cols-2 gap-2">
+				<div>
+					<Label className="text-xs">Rotation</Label>
+					<Input
+						type="number"
+						value={entity.rotation}
+						onChange={(e) => onUpdate({ rotation: Number(e.target.value) })}
+						className="h-7 text-xs"
+					/>
+				</div>
+				<div>
+					<Label className="text-xs">Direction</Label>
+					<Select
+						value={entity.direction}
+						onValueChange={(v) => onUpdate({ direction: v as "up" | "down" })}
+					>
+						<SelectTrigger className="h-7 text-xs">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="up">Up</SelectItem>
+							<SelectItem value="down">Down</SelectItem>
+						</SelectContent>
+					</Select>
+				</div>
+			</div>
+			<div>
+				<Label className="text-xs">Label</Label>
+				<Input
+					value={entity.label ?? ""}
+					onChange={(e) => onUpdate({ label: e.target.value })}
+					className="h-7 text-xs"
+				/>
 			</div>
 		</>
 	);

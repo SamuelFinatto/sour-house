@@ -44,6 +44,7 @@ const COLORS = {
 	shower: "#ADD8E6",
 	bathtub: "#E0E0E0",
 	annotation: "#FFB6C1",
+	stairs: "#C4B998",
 };
 
 export function buildScene3D(
@@ -204,6 +205,21 @@ export function buildScene3D(
 					depth: e.height * SCALE,
 					rotationY: -rotRad,
 					color: COLORS.bathtub,
+				});
+				break;
+			}
+			case "stairs": {
+				const rotRad = degToRad(e.rotation);
+				objects.push({
+					type: "box",
+					x: (e.x + e.width / 2) * SCALE,
+					y: baseY + WALL_HEIGHT / 2,
+					z: (e.y + e.height / 2) * SCALE,
+					width: e.width * SCALE,
+					height: WALL_HEIGHT,
+					depth: e.height * SCALE,
+					rotationY: -rotRad,
+					color: COLORS.stairs,
 				});
 				break;
 			}

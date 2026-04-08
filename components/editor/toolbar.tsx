@@ -7,6 +7,7 @@ import {
 	ChevronDown,
 	DoorOpen,
 	Droplets,
+	Footprints,
 	Grid3X3,
 	Hand,
 	Lightbulb,
@@ -64,6 +65,7 @@ const structureTools: { tool: Tool; icon: React.ReactNode; label: string }[] = [
 	{ tool: "room", icon: <Square className="h-4 w-4" />, label: "Room" },
 	{ tool: "door", icon: <DoorOpen className="h-4 w-4" />, label: "Door" },
 	{ tool: "window", icon: <AppWindow className="h-4 w-4" />, label: "Window" },
+	{ tool: "stairs", icon: <Footprints className="h-4 w-4" />, label: "Stairs" },
 ];
 
 const electricalTools: { tool: Tool; icon: React.ReactNode; label: string }[] =

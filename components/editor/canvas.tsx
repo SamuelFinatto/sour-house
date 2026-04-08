@@ -119,7 +119,8 @@ export function Canvas({
 		activeTool === "sink" ||
 		activeTool === "toilet" ||
 		activeTool === "shower" ||
-		activeTool === "bathtub";
+		activeTool === "bathtub" ||
+		activeTool === "stairs";
 
 	function finishDraw(
 		start: { x: number; y: number },
@@ -265,6 +266,18 @@ export function Canvas({
 				width: 150,
 				height: 70,
 				rotation: 0,
+			});
+		} else if (activeTool === "stairs") {
+			onAddEntity({
+				id: generateId(),
+				type: "stairs",
+				layer: "structure",
+				x: pt.x,
+				y: pt.y,
+				width: 100,
+				height: 200,
+				rotation: 0,
+				direction: "up",
 			});
 		} else {
 			onAddEntity({
@@ -1120,6 +1133,70 @@ function EntityRenderer({
 					</text>
 				</g>
 			);
+		case "stairs": {
+			const stepCount = Math.max(3, Math.round(entity.height / 25));
+			const stepH = entity.height / stepCount;
+			const isUp = entity.direction === "up";
+			return (
+				<g
+					onMouseDown={onMouseDown}
+					onClick={onClick}
+					className="cursor-pointer"
+					transform={`rotate(${entity.rotation}, ${entity.x + entity.width / 2}, ${entity.y + entity.height / 2})`}
+				>
+					<rect
+						x={entity.x}
+						y={entity.y}
+						width={entity.width}
+						height={entity.height}
+						fill={isSelected ? SELECT_FILL : "#f0ece4"}
+						stroke={isSelected ? SELECT_COLOR : "#8b7355"}
+						strokeWidth={isSelected ? 2 : 1.5}
+					/>
+					{Array.from({ length: stepCount - 1 }, (_, i) => (
+						<line
+							key={`step-${i}`}
+							x1={entity.x}
+							y1={entity.y + stepH * (i + 1)}
+							x2={entity.x + entity.width}
+							y2={entity.y + stepH * (i + 1)}
+							stroke={isSelected ? SELECT_COLOR : "#8b7355"}
+							strokeWidth={0.8}
+						/>
+					))}
+					{/* Direction arrow */}
+					<line
+						x1={entity.x + entity.width / 2}
+						y1={isUp ? entity.y + entity.height - 10 : entity.y + 10}
+						x2={entity.x + entity.width / 2}
+						y2={isUp ? entity.y + 10 : entity.y + entity.height - 10}
+						stroke={isSelected ? SELECT_COLOR : "#555"}
+						strokeWidth={1.5}
+						markerEnd="none"
+					/>
+					<polyline
+						points={
+							isUp
+								? `${entity.x + entity.width / 2 - 6},${entity.y + 20} ${entity.x + entity.width / 2},${entity.y + 10} ${entity.x + entity.width / 2 + 6},${entity.y + 20}`
+								: `${entity.x + entity.width / 2 - 6},${entity.y + entity.height - 20} ${entity.x + entity.width / 2},${entity.y + entity.height - 10} ${entity.x + entity.width / 2 + 6},${entity.y + entity.height - 20}`
+						}
+						fill="none"
+						stroke={isSelected ? SELECT_COLOR : "#555"}
+						strokeWidth={1.5}
+						strokeLinejoin="round"
+					/>
+					<text
+						x={entity.x + entity.width / 2}
+						y={entity.y + entity.height + 12}
+						textAnchor="middle"
+						fontSize={9}
+						fill="#555"
+					>
+						{entity.label || (isUp ? "Up" : "Down")}
+					</text>
+				</g>
+			);
+		}
 	}
 }
 

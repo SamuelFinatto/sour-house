@@ -89,6 +89,7 @@ export function getEntitiesBBox(entities: Entity[]): BBox | null {
 			case "sink":
 			case "shower":
 			case "bathtub":
+			case "stairs":
 				minX = Math.min(minX, e.x);
 				minY = Math.min(minY, e.y);
 				maxX = Math.max(maxX, e.x + e.width);
