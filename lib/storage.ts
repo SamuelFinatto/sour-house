@@ -297,3 +297,19 @@ export async function deleteFloor(
 		floorOrder: project.floorOrder.filter((id) => id !== floorId),
 	});
 }
+
+export async function moveFloor(
+	sourceProjectId: string,
+	targetProjectId: string,
+	floorId: string,
+): Promise<void> {
+	const floor = await getFloor(sourceProjectId, floorId);
+	await createFloor(targetProjectId, floor);
+
+	// Remove from source project
+	await rm(floorFilePath(sourceProjectId, floorId), { force: true });
+	const sourceProject = await getProject(sourceProjectId);
+	await updateProject(sourceProjectId, {
+		floorOrder: sourceProject.floorOrder.filter((id) => id !== floorId),
+	});
+}

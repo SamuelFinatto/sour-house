@@ -2,6 +2,7 @@
 
 import {
 	ArrowLeft,
+	ArrowRightLeft,
 	Check,
 	Copy,
 	Download,
@@ -20,6 +21,13 @@ import { CreateFloorDialog } from "@/components/floor/create-floor-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+	Dialog,
+	DialogContent,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProject } from "@/hooks/use-project";
 
@@ -38,6 +46,14 @@ export function FloorList({ projectId }: FloorListProps) {
 	const [isRenaming, setIsRenaming] = useState(false);
 	const [renameValue, setRenameValue] = useState("");
 	const [deletingFloorId, setDeletingFloorId] = useState<string | null>(null);
+	const [movingFloorId, setMovingFloorId] = useState<string | null>(null);
+	const { data: allProjects } = useSWR<{ id: string; name: string }[]>(
+		movingFloorId ? "/api/projects" : null,
+		fetcher,
+	);
+	const [selectedTargetProject, setSelectedTargetProject] = useState<
+		string | null
+	>(null);
 
 	async function handleCreateFloor(floor: {
 		id: string;
@@ -84,6 +100,27 @@ export function FloorList({ projectId }: FloorListProps) {
 		setRenamingFloorId(null);
 		mutate();
 		mutateFloors();
+	}
+
+	async function handleMoveFloor() {
+		if (!movingFloorId || !selectedTargetProject) return;
+		const res = await fetch(
+			`/api/projects/${projectId}/floors/${movingFloorId}/move`,
+			{
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ targetProjectId: selectedTargetProject }),
+			},
+		);
+		if (!res.ok) {
+			toast.error("Failed to move floor");
+			return;
+		}
+		setMovingFloorId(null);
+		setSelectedTargetProject(null);
+		mutate();
+		mutateFloors();
+		toast.success("Floor moved");
 	}
 
 	async function handleDuplicateFloor(floorId: string) {
@@ -319,6 +356,17 @@ export function FloorList({ projectId }: FloorListProps) {
 										<Button
 											variant="ghost"
 											size="icon-sm"
+											onClick={() => {
+												setMovingFloorId(floorId);
+												setSelectedTargetProject(null);
+											}}
+											title="Move to another project"
+										>
+											<ArrowRightLeft className="h-4 w-4" />
+										</Button>
+										<Button
+											variant="ghost"
+											size="icon-sm"
 											onClick={() => setDeletingFloorId(floorId)}
 											title="Delete floor"
 										>
@@ -342,6 +390,51 @@ export function FloorList({ projectId }: FloorListProps) {
 					if (deletingFloorId) return handleDeleteFloor(deletingFloorId);
 				}}
 			/>
+
+			{/* Move floor dialog */}
+			<Dialog
+				open={movingFloorId !== null}
+				onOpenChange={(open) => {
+					if (!open) setMovingFloorId(null);
+				}}
+			>
+				<DialogContent className="sm:max-w-md">
+					<DialogHeader>
+						<DialogTitle>Move floor to another project</DialogTitle>
+					</DialogHeader>
+					<div className="space-y-1">
+						{allProjects
+							?.filter((p) => p.id !== projectId)
+							.map((p) => (
+								<button
+									key={p.id}
+									type="button"
+									className={`w-full text-left rounded-lg px-3 py-2 text-sm transition-colors ${
+										selectedTargetProject === p.id
+											? "bg-primary text-primary-foreground"
+											: "hover:bg-muted"
+									}`}
+									onClick={() => setSelectedTargetProject(p.id)}
+								>
+									{p.name}
+								</button>
+							))}
+						{allProjects?.filter((p) => p.id !== projectId).length === 0 && (
+							<p className="text-sm text-muted-foreground py-4 text-center">
+								No other projects available
+							</p>
+						)}
+					</div>
+					<DialogFooter>
+						<Button variant="outline" onClick={() => setMovingFloorId(null)}>
+							Cancel
+						</Button>
+						<Button onClick={handleMoveFloor} disabled={!selectedTargetProject}>
+							Move
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }

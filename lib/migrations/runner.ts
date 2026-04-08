@@ -122,7 +122,7 @@ export async function migrateAll(dataDir: string): Promise<MigrationResult[]> {
 	try {
 		const dirents = await readdir(dataDir, { withFileTypes: true });
 		entries = dirents
-			.filter((d) => d.isDirectory())
+			.filter((d) => d.isDirectory() && !d.name.startsWith("_"))
 			.map((d) => d.name as unknown as string);
 	} catch {
 		return results;
