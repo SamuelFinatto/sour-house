@@ -1,15 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { Layers } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Canvas } from "@/components/editor/canvas";
 import { EntitiesPanel } from "@/components/editor/entities-panel";
+import { FloorNav } from "@/components/editor/floor-nav";
 import { HistoryPanel } from "@/components/editor/history-panel";
 import { Inspector } from "@/components/editor/inspector";
 import { LayersPanel } from "@/components/editor/layers-panel";
 import { SymbolLibrary } from "@/components/editor/symbol-library";
 import { Toolbar } from "@/components/editor/toolbar";
 import { UnderlayPanel } from "@/components/editor/underlay-panel";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useEditor } from "@/hooks/use-editor";
 import { useFloor } from "@/hooks/use-floor";
@@ -27,6 +30,7 @@ export function FloorEditor({ projectId, floorId }: FloorEditorProps) {
 	const editor = useEditor();
 	const initializedRef = useRef(false);
 	const canvasContainerRef = useRef<HTMLDivElement>(null);
+	const [floorNavOpen, setFloorNavOpen] = useState(false);
 
 	// Sync entities when floor data loads and fit viewport
 	useEffect(() => {
@@ -286,8 +290,27 @@ export function FloorEditor({ projectId, floorId }: FloorEditorProps) {
 
 			{/* Main area */}
 			<div className="flex flex-1 min-h-0 min-w-0">
+				{/* Floor nav panel */}
+				<FloorNav
+					projectId={projectId}
+					currentFloorId={floorId}
+					open={floorNavOpen}
+					onClose={() => setFloorNavOpen(false)}
+				/>
+
 				{/* Canvas */}
-				<div ref={canvasContainerRef} className="flex-1 flex min-w-0">
+				<div ref={canvasContainerRef} className="flex-1 flex min-w-0 relative">
+					{!floorNavOpen && (
+						<Button
+							variant="outline"
+							size="icon-sm"
+							className="absolute top-2 left-2 z-10"
+							onClick={() => setFloorNavOpen(true)}
+							title="Show floors"
+						>
+							<Layers className="h-4 w-4" />
+						</Button>
+					)}
 					<Canvas
 						entities={editor.entities}
 						viewport={editor.state.viewport}
