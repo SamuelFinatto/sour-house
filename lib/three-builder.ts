@@ -210,17 +210,39 @@ export function buildScene3D(
 			}
 			case "stairs": {
 				const rotRad = degToRad(e.rotation);
-				objects.push({
-					type: "box",
-					x: (e.x + e.width / 2) * SCALE,
-					y: baseY + WALL_HEIGHT / 2,
-					z: (e.y + e.height / 2) * SCALE,
-					width: e.width * SCALE,
-					height: WALL_HEIGHT,
-					depth: e.height * SCALE,
-					rotationY: -rotRad,
-					color: COLORS.stairs,
-				});
+				const stairW = e.width * SCALE;
+				const stairD = e.height * SCALE;
+				const cx = (e.x + e.width / 2) * SCALE;
+				const cz = (e.y + e.height / 2) * SCALE;
+				const stepCount = Math.max(2, Math.round((e.height * SCALE) / 0.25));
+				const stepDepth = stairD / stepCount;
+				const stepHeight = WALL_HEIGHT / stepCount;
+				const cosR = Math.cos(-rotRad);
+				const sinR = Math.sin(-rotRad);
+
+				for (let s = 0; s < stepCount; s++) {
+					// Local offset along depth axis (z in local space), from front to back
+					const localZ =
+						-stairD / 2 +
+						stepDepth * (e.direction === "up" ? s : stepCount - 1 - s) +
+						stepDepth / 2;
+					const h = stepHeight * (s + 1);
+					// Rotate local offset by the entity rotation
+					const worldX = cx + localZ * sinR;
+					const worldZ = cz + localZ * cosR;
+
+					objects.push({
+						type: "box",
+						x: worldX,
+						y: baseY + h / 2,
+						z: worldZ,
+						width: stairW,
+						height: h,
+						depth: stepDepth,
+						rotationY: -rotRad,
+						color: COLORS.stairs,
+					});
+				}
 				break;
 			}
 			case "light": {
