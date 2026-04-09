@@ -160,16 +160,26 @@ export function useEditor(initialEntities: Entity[] = []) {
 	);
 
 	const moveEntity = useCallback(
-		(id: string, direction: "up" | "down") => {
+		(id: string, direction: "up" | "down" | "top" | "bottom") => {
 			const idx = entities.findIndex((e) => e.id === id);
 			if (idx === -1) return;
-			const newIdx = direction === "up" ? idx - 1 : idx + 1;
-			if (newIdx < 0 || newIdx >= entities.length) return;
 			const newEntities = [...entities];
-			[newEntities[idx], newEntities[newIdx]] = [
-				newEntities[newIdx],
-				newEntities[idx],
-			];
+			if (direction === "top") {
+				if (idx === 0) return;
+				const [item] = newEntities.splice(idx, 1);
+				newEntities.unshift(item);
+			} else if (direction === "bottom") {
+				if (idx === newEntities.length - 1) return;
+				const [item] = newEntities.splice(idx, 1);
+				newEntities.push(item);
+			} else {
+				const newIdx = direction === "up" ? idx - 1 : idx + 1;
+				if (newIdx < 0 || newIdx >= entities.length) return;
+				[newEntities[idx], newEntities[newIdx]] = [
+					newEntities[newIdx],
+					newEntities[idx],
+				];
+			}
 			updateEntities(newEntities);
 		},
 		[entities, updateEntities],

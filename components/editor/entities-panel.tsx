@@ -4,6 +4,8 @@ import {
 	Armchair,
 	Bath,
 	ChevronDown,
+	ChevronsDown,
+	ChevronsUp,
 	ChevronUp,
 	DoorOpen,
 	Droplets,
@@ -25,7 +27,7 @@ interface EntitiesPanelProps {
 	visibleLayers: LayerVisibility;
 	selectedEntityIds: string[];
 	onSelect: (id: string | null) => void;
-	onMove: (id: string, direction: "up" | "down") => void;
+	onMove: (id: string, direction: "up" | "down" | "top" | "bottom") => void;
 }
 
 const typeIcons: Record<string, React.ReactNode> = {
@@ -122,6 +124,15 @@ export function EntitiesPanel({
 											type="button"
 											className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
 											disabled={index === 0}
+											onClick={() => onMove(entity.id, "top")}
+											title="Move to top"
+										>
+											<ChevronsUp className="h-3 w-3" />
+										</button>
+										<button
+											type="button"
+											className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+											disabled={index === 0}
 											onClick={() => onMove(entity.id, "up")}
 											title="Move up"
 										>
@@ -135,6 +146,15 @@ export function EntitiesPanel({
 											title="Move down"
 										>
 											<ChevronDown className="h-3 w-3" />
+										</button>
+										<button
+											type="button"
+											className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+											disabled={index === visibleEntities.length - 1}
+											onClick={() => onMove(entity.id, "bottom")}
+											title="Move to bottom"
+										>
+											<ChevronsDown className="h-3 w-3" />
 										</button>
 									</div>
 								)}
