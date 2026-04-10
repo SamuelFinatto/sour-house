@@ -1,4 +1,4 @@
-import type { Entity } from "@/types/entities";
+import type { DoorEntity, Entity, WindowEntity } from "@/types/entities";
 
 export interface Box3D {
 	type: "box";
@@ -25,6 +25,9 @@ export interface Plane3D {
 export type Object3D = Box3D | Plane3D;
 
 const WALL_HEIGHT = 2.6; // meters
+const DOOR_HEIGHT = 2.0;
+const WINDOW_BOTTOM = 0.9;
+const WINDOW_HEIGHT = 1.2;
 const SCALE = 1 / 100; // 1 cm = 0.01 m
 
 function degToRad(deg: number): number {
@@ -47,12 +50,186 @@ const COLORS = {
 	stairs: "#C4B998",
 };
 
+interface Opening {
+	t: number; // position along wall (0–1)
+	halfW: number; // half-width in meters
+	kind: "door" | "window";
+}
+
+function buildWallWithOpenings(
+	x1: number,
+	z1: number,
+	x2: number,
+	z2: number,
+	thickness: number,
+	angle: number,
+	length: number,
+	baseY: number,
+	openings: Opening[],
+	objects: Object3D[],
+) {
+	if (openings.length === 0) {
+		objects.push({
+			type: "box",
+			x: (x1 + x2) / 2,
+			y: baseY + WALL_HEIGHT / 2,
+			z: (z1 + z2) / 2,
+			width: length,
+			height: WALL_HEIGHT,
+			depth: thickness,
+			rotationY: -angle,
+			color: COLORS.wall,
+		});
+		return;
+	}
+
+	// Sort openings by position along wall
+	const sorted = [...openings].sort((a, b) => a.t - b.t);
+
+	// Direction vector along the wall
+	const dx = (x2 - x1) / length;
+	const dz = (z2 - z1) / length;
+
+	// Build solid wall segments between openings, plus lintels/sills
+	let cursor = 0; // current position in meters from x1,z1
+
+	for (const op of sorted) {
+		const center = op.t * length;
+		const gapStart = Math.max(0, center - op.halfW);
+		const gapEnd = Math.min(length, center + op.halfW);
+
+		// Solid segment before this opening
+		if (gapStart > cursor + 0.001) {
+			const segLen = gapStart - cursor;
+			const segMid = cursor + segLen / 2;
+			objects.push({
+				type: "box",
+				x: x1 + dx * segMid,
+				y: baseY + WALL_HEIGHT / 2,
+				z: z1 + dz * segMid,
+				width: segLen,
+				height: WALL_HEIGHT,
+				depth: thickness,
+				rotationY: -angle,
+				color: COLORS.wall,
+			});
+		}
+
+		// Lintel/sill around the opening
+		const gapMidX = x1 + dx * ((gapStart + gapEnd) / 2);
+		const gapMidZ = z1 + dz * ((gapStart + gapEnd) / 2);
+		const gapWidth = gapEnd - gapStart;
+
+		if (op.kind === "door") {
+			// Lintel above the door
+			const lintelH = WALL_HEIGHT - DOOR_HEIGHT;
+			if (lintelH > 0.01) {
+				objects.push({
+					type: "box",
+					x: gapMidX,
+					y: baseY + DOOR_HEIGHT + lintelH / 2,
+					z: gapMidZ,
+					width: gapWidth,
+					height: lintelH,
+					depth: thickness,
+					rotationY: -angle,
+					color: COLORS.wall,
+				});
+			}
+		} else {
+			// Wall below window (sill)
+			if (WINDOW_BOTTOM > 0.01) {
+				objects.push({
+					type: "box",
+					x: gapMidX,
+					y: baseY + WINDOW_BOTTOM / 2,
+					z: gapMidZ,
+					width: gapWidth,
+					height: WINDOW_BOTTOM,
+					depth: thickness,
+					rotationY: -angle,
+					color: COLORS.wall,
+				});
+			}
+			// Wall above window
+			const windowTop = WINDOW_BOTTOM + WINDOW_HEIGHT;
+			const aboveH = WALL_HEIGHT - windowTop;
+			if (aboveH > 0.01) {
+				objects.push({
+					type: "box",
+					x: gapMidX,
+					y: baseY + windowTop + aboveH / 2,
+					z: gapMidZ,
+					width: gapWidth,
+					height: aboveH,
+					depth: thickness,
+					rotationY: -angle,
+					color: COLORS.wall,
+				});
+			}
+		}
+
+		cursor = gapEnd;
+	}
+
+	// Solid segment after last opening
+	if (length > cursor + 0.001) {
+		const segLen = length - cursor;
+		const segMid = cursor + segLen / 2;
+		objects.push({
+			type: "box",
+			x: x1 + dx * segMid,
+			y: baseY + WALL_HEIGHT / 2,
+			z: z1 + dz * segMid,
+			width: segLen,
+			height: WALL_HEIGHT,
+			depth: thickness,
+			rotationY: -angle,
+			color: COLORS.wall,
+		});
+	}
+}
+
 export function buildScene3D(
 	entities: Entity[],
 	elevationCm: number,
 ): Object3D[] {
 	const objects: Object3D[] = [];
 	const baseY = elevationCm * SCALE;
+
+	// Match openings (doors/windows) to nearest wall geometrically
+	const walls = entities.filter((e) => e.type === "wall");
+	const doorWindows = entities.filter(
+		(e) => e.type === "door" || e.type === "window",
+	) as (DoorEntity | WindowEntity)[];
+	const openingsByWall = new Map<string, (DoorEntity | WindowEntity)[]>();
+	for (const op of doorWindows) {
+		let bestWallId = "";
+		let bestDist = Infinity;
+		for (const w of walls) {
+			if (w.type !== "wall") continue;
+			// Distance from point to line segment
+			const ax = op.x - w.x1;
+			const ay = op.y - w.y1;
+			const bx = w.x2 - w.x1;
+			const by = w.y2 - w.y1;
+			const lenSq = bx * bx + by * by;
+			const t =
+				lenSq > 0 ? Math.max(0, Math.min(1, (ax * bx + ay * by) / lenSq)) : 0;
+			const px = w.x1 + t * bx;
+			const py = w.y1 + t * by;
+			const dist = Math.sqrt((op.x - px) ** 2 + (op.y - py) ** 2);
+			if (dist < bestDist) {
+				bestDist = dist;
+				bestWallId = w.id;
+			}
+		}
+		if (bestWallId) {
+			const list = openingsByWall.get(bestWallId) ?? [];
+			list.push(op);
+			openingsByWall.set(bestWallId, list);
+		}
+	}
 
 	for (const e of entities) {
 		switch (e.type) {
@@ -63,22 +240,43 @@ export function buildScene3D(
 				const z2 = e.y2 * SCALE;
 				const length = Math.sqrt((x2 - x1) ** 2 + (z2 - z1) ** 2);
 				const thickness = e.thickness * SCALE;
-				const cx = (x1 + x2) / 2;
-				const cz = (z1 + z2) / 2;
-				// Angle of the wall in the XZ plane
 				const angle = Math.atan2(z2 - z1, x2 - x1);
 
-				objects.push({
-					type: "box",
-					x: cx,
-					y: baseY + WALL_HEIGHT / 2,
-					z: cz,
-					width: length,
-					height: WALL_HEIGHT,
-					depth: thickness,
-					rotationY: -angle,
-					color: COLORS.wall,
-				});
+				// Project any doors/windows onto this wall
+				const wallOpenings = openingsByWall.get(e.id);
+				const openings: Opening[] = [];
+				if (wallOpenings) {
+					for (const op of wallOpenings) {
+						// Project opening center onto wall line (in cm space)
+						const opx = op.x - e.x1;
+						const opy = op.y - e.y1;
+						const wallDx = e.x2 - e.x1;
+						const wallDy = e.y2 - e.y1;
+						const wallLen = Math.sqrt(wallDx ** 2 + wallDy ** 2);
+						const t =
+							wallLen > 0
+								? (opx * wallDx + opy * wallDy) / (wallLen * wallLen)
+								: 0.5;
+						openings.push({
+							t: Math.max(0, Math.min(1, t)),
+							halfW: (op.width * SCALE) / 2,
+							kind: op.type,
+						});
+					}
+				}
+
+				buildWallWithOpenings(
+					x1,
+					z1,
+					x2,
+					z2,
+					thickness,
+					angle,
+					length,
+					baseY,
+					openings,
+					objects,
+				);
 				break;
 			}
 			case "room": {
@@ -105,17 +303,51 @@ export function buildScene3D(
 			}
 			case "door": {
 				const rotRad = degToRad(e.rotation);
-				objects.push({
-					type: "box",
-					x: e.x * SCALE,
-					y: baseY + 1.0,
-					z: e.y * SCALE,
-					width: e.width * SCALE,
-					height: 2.0,
-					depth: 0.08,
-					rotationY: -rotRad,
-					color: COLORS.door,
-				});
+				const doorWidth = e.width * SCALE;
+				const isSliding = e.doorStyle === "sliding";
+
+				if (isSliding) {
+					// Sliding door: thin panel slid to one side along the wall
+					const slideDir = e.swing === "left" ? -1 : 1;
+					const slideOffset = (doorWidth / 2) * slideDir;
+					const alongX = Math.cos(-rotRad) * slideOffset;
+					const alongZ = -Math.sin(-rotRad) * slideOffset;
+					objects.push({
+						type: "box",
+						x: e.x * SCALE + alongX,
+						y: baseY + DOOR_HEIGHT / 2,
+						z: e.y * SCALE + alongZ,
+						width: doorWidth * 0.5,
+						height: DOOR_HEIGHT,
+						depth: 0.04,
+						rotationY: -rotRad,
+						color: "#A0522D",
+					});
+				} else {
+					// Regular door: panel hinged from the swing side, open ~30°
+					const swingSign = e.swing === "left" ? -1 : 1;
+					// Hinge position: offset along wall from center to the swing side edge
+					const hingeAlongWall = (doorWidth / 2) * swingSign;
+					const hingeX = e.x * SCALE + Math.cos(-rotRad) * hingeAlongWall;
+					const hingeZ = e.y * SCALE - Math.sin(-rotRad) * hingeAlongWall;
+					// Door swings open 30° from wall plane, perpendicular outward
+					const swingAngle = (Math.PI / 6) * -swingSign;
+					const panelCenterLocal = doorWidth / 2;
+					const panelAngle = -rotRad + Math.PI / 2 + swingAngle;
+					const panelX = hingeX + Math.cos(panelAngle) * panelCenterLocal;
+					const panelZ = hingeZ + Math.sin(panelAngle) * panelCenterLocal;
+					objects.push({
+						type: "box",
+						x: panelX,
+						y: baseY + DOOR_HEIGHT / 2,
+						z: panelZ,
+						width: doorWidth,
+						height: DOOR_HEIGHT,
+						depth: 0.05,
+						rotationY: panelAngle - Math.PI / 2,
+						color: COLORS.door,
+					});
+				}
 				break;
 			}
 			case "window": {
@@ -123,11 +355,11 @@ export function buildScene3D(
 				objects.push({
 					type: "box",
 					x: e.x * SCALE,
-					y: baseY + 1.3,
+					y: baseY + WINDOW_BOTTOM + WINDOW_HEIGHT / 2,
 					z: e.y * SCALE,
 					width: e.width * SCALE,
-					height: 1.0,
-					depth: 0.06,
+					height: WINDOW_HEIGHT,
+					depth: 0.03,
 					rotationY: -rotRad,
 					color: COLORS.window,
 				});
