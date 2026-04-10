@@ -1,6 +1,6 @@
 "use client";
 
-import { ImagePlus, Trash2, X } from "lucide-react";
+import { ImagePlus, Plus, Trash2, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { ImageViewerDialog } from "@/components/editor/image-viewer-dialog";
@@ -282,6 +282,76 @@ function RoomFields({
 					<p className="text-xs text-muted-foreground">
 						{formatLength(perimeter, units)}
 					</p>
+				</div>
+			</div>
+
+			<Separator />
+
+			<div>
+				<div className="flex items-center justify-between mb-1">
+					<Label className="text-xs">Vertices</Label>
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						onClick={() => {
+							const last = entity.polygon[entity.polygon.length - 1] ?? [0, 0];
+							onUpdate({
+								polygon: [...entity.polygon, [last[0] + 20, last[1] + 20]],
+							});
+						}}
+						title="Add vertex"
+					>
+						<Plus className="h-3.5 w-3.5" />
+					</Button>
+				</div>
+				<div className="space-y-1">
+					{entity.polygon.map(([px, py], i) => (
+						<div key={`v${i}`} className="flex items-center gap-1">
+							<span className="text-[10px] text-muted-foreground w-4 shrink-0">
+								{i}
+							</span>
+							<Input
+								type="number"
+								value={px}
+								onChange={(e) => {
+									const newPoly = entity.polygon.map(
+										(p) => [...p] as [number, number],
+									);
+									newPoly[i][0] = Number(e.target.value);
+									onUpdate({ polygon: newPoly });
+								}}
+								className="h-6 text-xs flex-1"
+								title="X"
+							/>
+							<Input
+								type="number"
+								value={py}
+								onChange={(e) => {
+									const newPoly = entity.polygon.map(
+										(p) => [...p] as [number, number],
+									);
+									newPoly[i][1] = Number(e.target.value);
+									onUpdate({ polygon: newPoly });
+								}}
+								className="h-6 text-xs flex-1"
+								title="Y"
+							/>
+							{entity.polygon.length > 3 && (
+								<Button
+									variant="ghost"
+									size="icon-sm"
+									onClick={() =>
+										onUpdate({
+											polygon: entity.polygon.filter((_, j) => j !== i),
+										})
+									}
+									title="Remove vertex"
+								>
+									<X className="h-3 w-3" />
+								</Button>
+							)}
+						</div>
+					))}
 				</div>
 			</div>
 
