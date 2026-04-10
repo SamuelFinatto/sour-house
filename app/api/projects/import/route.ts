@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { migrateFloorData, migrateProjectData } from "@/lib/migrations/runner";
 import {
 	createFloor,
 	createProject,
@@ -24,8 +25,13 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
+		// Migrate project data if from an older version
+		const migratedProject = migrateProjectData(
+			body.project as unknown as Record<string, unknown>,
+		) as unknown as Project;
+
 		// Check if project already exists, generate new id if so
-		let projectId = body.project.id;
+		let projectId = migratedProject.id;
 		try {
 			await getProject(projectId);
 			// Project exists — append timestamp to make unique
@@ -34,17 +40,21 @@ export async function POST(request: NextRequest) {
 			// Project doesn't exist, we can use the original id
 		}
 
-		const originalFloorOrder = body.project.floorOrder ?? [];
+		const originalFloorOrder = migratedProject.floorOrder ?? [];
 
 		await createProject({
-			...body.project,
+			...migratedProject,
 			id: projectId,
 			floorOrder: [],
 		});
 
 		if (Array.isArray(body.floors)) {
 			for (const floor of body.floors) {
-				await createFloor(projectId, floor);
+				// Migrate each floor if from an older version
+				const migratedFloor = migrateFloorData(
+					floor as unknown as Record<string, unknown>,
+				) as unknown as Floor;
+				await createFloor(projectId, migratedFloor);
 			}
 		}
 

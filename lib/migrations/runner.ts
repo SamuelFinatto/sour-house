@@ -115,6 +115,52 @@ export async function migrateProject(
 	};
 }
 
+/**
+ * Migrate a floor data object in memory (e.g. from an import).
+ * Returns the migrated data with schemaVersion stamped.
+ */
+export function migrateFloorData(
+	data: Record<string, unknown>,
+): Record<string, unknown> {
+	const currentVersion = valid(coerce(String(data.schemaVersion ?? "0.0.0")));
+	if (!currentVersion || currentVersion === APP_VERSION) {
+		return { ...data, schemaVersion: APP_VERSION };
+	}
+
+	const applicable = getMigrationsForVersion(currentVersion);
+	let migrated = { ...data };
+	for (const migration of applicable) {
+		if (migration.migrateFloor) {
+			migrated = migration.migrateFloor(migrated);
+		}
+	}
+	migrated.schemaVersion = APP_VERSION;
+	return migrated;
+}
+
+/**
+ * Migrate a project data object in memory (e.g. from an import).
+ * Returns the migrated data with schemaVersion stamped.
+ */
+export function migrateProjectData(
+	data: Record<string, unknown>,
+): Record<string, unknown> {
+	const currentVersion = valid(coerce(String(data.schemaVersion ?? "0.0.0")));
+	if (!currentVersion || currentVersion === APP_VERSION) {
+		return { ...data, schemaVersion: APP_VERSION };
+	}
+
+	const applicable = getMigrationsForVersion(currentVersion);
+	let migrated = { ...data };
+	for (const migration of applicable) {
+		if (migration.migrateProject) {
+			migrated = migration.migrateProject(migrated);
+		}
+	}
+	migrated.schemaVersion = APP_VERSION;
+	return migrated;
+}
+
 export async function migrateAll(dataDir: string): Promise<MigrationResult[]> {
 	const results: MigrationResult[] = [];
 

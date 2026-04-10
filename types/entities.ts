@@ -98,6 +98,32 @@ export interface OutletEntity extends BaseEntity {
 	label?: string;
 }
 
+export type FurnitureKind =
+	| "generic"
+	| "bed"
+	| "table"
+	| "chair"
+	| "sofa"
+	| "desk"
+	| "bookshelf"
+	| "wardrobe"
+	| "tv";
+
+export const FURNITURE_DEFAULTS: Record<
+	FurnitureKind,
+	{ width: number; height: number; name: string }
+> = {
+	generic: { width: 80, height: 60, name: "Item" },
+	bed: { width: 200, height: 140, name: "Bed" },
+	table: { width: 120, height: 80, name: "Table" },
+	chair: { width: 50, height: 50, name: "Chair" },
+	sofa: { width: 200, height: 90, name: "Sofa" },
+	desk: { width: 140, height: 70, name: "Desk" },
+	bookshelf: { width: 80, height: 30, name: "Bookshelf" },
+	wardrobe: { width: 120, height: 60, name: "Wardrobe" },
+	tv: { width: 120, height: 8, name: "TV" },
+};
+
 export interface FurnitureEntity extends BaseEntity {
 	type: "furniture";
 	layer: "furniture";
@@ -107,6 +133,7 @@ export interface FurnitureEntity extends BaseEntity {
 	height: number;
 	rotation: number;
 	name: string;
+	furnitureType?: FurnitureKind;
 }
 
 export interface AnnotationEntity extends BaseEntity {

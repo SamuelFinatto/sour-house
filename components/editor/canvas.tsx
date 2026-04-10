@@ -234,6 +234,7 @@ export function Canvas({
 				height: 60,
 				rotation: 0,
 				name: "Item",
+				furnitureType: "generic",
 			});
 		} else if (activeTool === "annotation") {
 			onAddEntity({

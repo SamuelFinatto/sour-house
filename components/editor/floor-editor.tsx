@@ -123,8 +123,15 @@ export function FloorEditor({ projectId, floorId }: FloorEditorProps) {
 					toast.error("Invalid floor file: missing entities");
 					return;
 				}
-				editor.loadEntities(data.entities);
-				toast.success(`Imported ${data.entities.length} entities`);
+				// Migrate the floor data to current schema version
+				const res = await fetch("/api/migrate", {
+					method: "PUT",
+					headers: { "Content-Type": "application/json" },
+					body: text,
+				});
+				const migrated = res.ok ? await res.json() : data;
+				editor.loadEntities(migrated.entities);
+				toast.success(`Imported ${migrated.entities.length} entities`);
 			} catch {
 				toast.error("Failed to parse JSON file");
 			}

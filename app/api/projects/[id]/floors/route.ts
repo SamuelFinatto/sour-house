@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { migrateFloorData } from "@/lib/migrations/runner";
 import { createFloor, listFloors } from "@/lib/storage";
 import { APP_VERSION } from "@/lib/version";
 
@@ -29,20 +30,27 @@ export async function POST(
 		);
 	}
 
+	// Migrate imported floor data if from an older version
+	const migrated = migrateFloorData(body as Record<string, unknown>);
+
 	const floor = await createFloor(id, {
-		id: body.id,
-		name: body.name,
-		elevationCm: body.elevationCm || 0,
-		units: body.units || "cm",
-		grid: body.grid || { enabled: true, size: 10, snapToGrid: true },
-		layers: body.layers || {
+		id: migrated.id as string,
+		name: migrated.name as string,
+		elevationCm: (migrated.elevationCm as number) || 0,
+		units: (migrated.units as string) || "cm",
+		grid: (migrated.grid as typeof body.grid) || {
+			enabled: true,
+			size: 10,
+			snapToGrid: true,
+		},
+		layers: (migrated.layers as typeof body.layers) || {
 			structure: true,
 			furniture: true,
 			electrical: true,
 			plumbing: true,
 			notes: true,
 		},
-		entities: body.entities || [],
+		entities: (migrated.entities as typeof body.entities) || [],
 		schemaVersion: APP_VERSION,
 	});
 

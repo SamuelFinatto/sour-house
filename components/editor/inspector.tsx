@@ -21,6 +21,7 @@ import type {
 	DoorEntity,
 	Entity,
 	FurnitureEntity,
+	FurnitureKind,
 	RoomEntity,
 	RoomImage,
 	StairsEntity,
@@ -525,6 +526,18 @@ function DoorStyleFields({
 	);
 }
 
+const FURNITURE_KIND_LABELS: Record<FurnitureKind, string> = {
+	generic: "Generic Object",
+	bed: "Bed",
+	table: "Table",
+	chair: "Chair",
+	sofa: "Sofa",
+	desk: "Desk",
+	bookshelf: "Bookshelf",
+	wardrobe: "Wardrobe",
+	tv: "TV",
+};
+
 function FurnitureFields({
 	entity,
 	onUpdate,
@@ -534,6 +547,26 @@ function FurnitureFields({
 }) {
 	return (
 		<>
+			<div>
+				<Label className="text-xs">Type</Label>
+				<Select
+					value={entity.furnitureType ?? "generic"}
+					onValueChange={(v) => {
+						onUpdate({ furnitureType: v as FurnitureKind });
+					}}
+				>
+					<SelectTrigger className="h-7 text-xs">
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent>
+						{Object.entries(FURNITURE_KIND_LABELS).map(([value, label]) => (
+							<SelectItem key={value} value={value}>
+								{label}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+			</div>
 			<div>
 				<Label className="text-xs">Name</Label>
 				<Input

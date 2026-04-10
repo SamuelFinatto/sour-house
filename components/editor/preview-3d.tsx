@@ -1,9 +1,10 @@
 "use client";
 
 import { OrbitControls } from "@react-three/drei";
-import { Canvas, useThree } from "@react-three/fiber";
-import { useCallback, useEffect, useMemo } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
+import * as THREE from "three";
 import { useFloor } from "@/hooks/use-floor";
 import type { Box3D, Object3D, Plane3D } from "@/lib/three-builder";
 import { buildScene3D, getSceneBBox } from "@/lib/three-builder";
@@ -58,6 +59,83 @@ function AutoFitCamera({
 	return null;
 }
 
+function KeyboardMovement() {
+	const { camera } = useThree();
+	const keys = useRef(new Set<string>());
+	const controlsRef = useRef<{ target: THREE.Vector3 } | null>(null);
+
+	useEffect(() => {
+		// Find the OrbitControls instance via the camera's parent scene
+		const ctrl = (
+			camera as unknown as {
+				userData?: { controls?: { target: THREE.Vector3 } };
+			}
+		)?.userData?.controls;
+		if (ctrl) controlsRef.current = ctrl;
+	}, [camera]);
+
+	useEffect(() => {
+		const onDown = (e: KeyboardEvent) => {
+			if (
+				[
+					"ArrowUp",
+					"ArrowDown",
+					"ArrowLeft",
+					"ArrowRight",
+					"w",
+					"a",
+					"s",
+					"d",
+				].includes(e.key)
+			) {
+				e.preventDefault();
+				keys.current.add(e.key);
+			}
+		};
+		const onUp = (e: KeyboardEvent) => keys.current.delete(e.key);
+		window.addEventListener("keydown", onDown);
+		window.addEventListener("keyup", onUp);
+		return () => {
+			window.removeEventListener("keydown", onDown);
+			window.removeEventListener("keyup", onUp);
+		};
+	}, []);
+
+	useFrame((_, delta) => {
+		if (keys.current.size === 0) return;
+		const speed = 5 * delta;
+
+		// Get camera's forward direction projected onto XZ plane
+		const forward = new THREE.Vector3();
+		camera.getWorldDirection(forward);
+		forward.y = 0;
+		forward.normalize();
+
+		const right = new THREE.Vector3();
+		right.crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
+
+		const move = new THREE.Vector3();
+		if (keys.current.has("ArrowUp") || keys.current.has("w")) move.add(forward);
+		if (keys.current.has("ArrowDown") || keys.current.has("s"))
+			move.sub(forward);
+		if (keys.current.has("ArrowRight") || keys.current.has("d"))
+			move.add(right);
+		if (keys.current.has("ArrowLeft") || keys.current.has("a")) move.sub(right);
+
+		if (move.lengthSq() > 0) {
+			move.normalize().multiplyScalar(speed);
+			camera.position.add(move);
+			// Also move OrbitControls target so rotation center follows
+			const ctrl = controlsRef.current;
+			if (ctrl) {
+				ctrl.target.add(move);
+			}
+		}
+	});
+
+	return null;
+}
+
 function Scene({
 	objects,
 	bbox,
@@ -65,15 +143,30 @@ function Scene({
 	objects: Object3D[];
 	bbox: ReturnType<typeof getSceneBBox>;
 }) {
+	const controlsRef = useRef<{ target: THREE.Vector3 } | null>(null);
+	const { camera } = useThree();
+
+	// Store controls ref on camera so KeyboardMovement can find it
+	useEffect(() => {
+		if (controlsRef.current) {
+			(
+				camera as unknown as { userData: Record<string, unknown> }
+			).userData.controls = controlsRef.current;
+		}
+	}, [camera]);
+
 	return (
 		<>
 			<ambientLight intensity={0.6} />
 			<directionalLight position={[10, 20, 10]} intensity={0.8} />
 			<AutoFitCamera {...bbox} />
 			<OrbitControls
+				ref={controlsRef as React.Ref<never>}
 				makeDefault
+				keyEvents={false}
 				target={[bbox.centerX, bbox.centerY, bbox.centerZ]}
 			/>
+			<KeyboardMovement />
 			{objects.map((obj, i) =>
 				obj.type === "box" ? (
 					<BoxMesh key={`box-${i}`} obj={obj} />
