@@ -1,5 +1,6 @@
 import useSWR from "swr";
-import { fetcher } from "@/lib/api";
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 interface FloorVersion {
 	version: string;

@@ -1,6 +1,7 @@
 import useSWR from "swr";
-import { fetcher } from "@/lib/api";
 import type { ProjectSummary } from "@/types/project";
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export function useProjects() {
 	const { data, error, isLoading, mutate } = useSWR<ProjectSummary[]>(

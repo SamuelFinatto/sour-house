@@ -1,13 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-	generateId,
-	polygonArea,
-	screenToCanvas,
-	snapToGrid,
-} from "@/lib/geometry";
-import { formatArea, formatLength } from "@/lib/units";
+import { generateId, screenToCanvas, snapToGrid } from "@/lib/geometry";
 import type { Tool, Viewport } from "@/types/editor";
 import type { Entity } from "@/types/entities";
 import type { FloorUnderlay, LayerVisibility } from "@/types/floor";
@@ -20,7 +14,6 @@ interface CanvasProps {
 	gridEnabled: boolean;
 	snapEnabled: boolean;
 	gridSize: number;
-	units: string;
 	selectedEntityIds: string[];
 	underlay?: FloorUnderlay;
 	underlayUrl?: string;
@@ -40,7 +33,6 @@ export function Canvas({
 	gridEnabled,
 	snapEnabled,
 	gridSize,
-	units,
 	selectedEntityIds,
 	underlay,
 	underlayUrl,
@@ -718,18 +710,6 @@ export function Canvas({
 					/>
 				))}
 
-				{/* Dimension labels (in meters) for selected entities */}
-				{visibleEntities
-					.filter((entity) => selectedEntityIds.includes(entity.id))
-					.map((entity) => (
-						<DimensionLabel
-							key={`dim-${entity.id}`}
-							entity={entity}
-							units={units}
-							zoom={viewport.zoom}
-						/>
-					))}
-
 				{/* Room vertex handles */}
 				{activeTool === "select" &&
 					visibleEntities
@@ -1010,7 +990,6 @@ export function Canvas({
 						start={drawStart}
 						end={drawCurrent}
 						zoom={viewport.zoom}
-						units={units}
 					/>
 				)}
 
@@ -1020,7 +999,6 @@ export function Canvas({
 						start={measurement.start}
 						end={measurement.end}
 						zoom={viewport.zoom}
-						units={units}
 					/>
 				)}
 			</g>
@@ -1537,104 +1515,29 @@ function EntityRenderer({
 	}
 }
 
-/** Renders a "= X.XX m" style label in real-world units next to a selected entity. */
-function DimensionLabel({
-	entity,
-	units,
-	zoom,
-}: {
-	entity: Entity;
-	units: string;
-	zoom: number;
-}) {
-	const fontSize = 11 / zoom;
-	let x: number;
-	let y: number;
-	let text: string;
-
-	switch (entity.type) {
-		case "wall": {
-			const dx = entity.x2 - entity.x1;
-			const dy = entity.y2 - entity.y1;
-			const len = Math.sqrt(dx * dx + dy * dy) || 1;
-			const perpX = -dy / len;
-			const perpY = dx / len;
-			const offset = 10 / zoom;
-			x = (entity.x1 + entity.x2) / 2 + perpX * offset;
-			y = (entity.y1 + entity.y2) / 2 + perpY * offset;
-			text = formatLength(len, units);
-			break;
-		}
-		case "room": {
-			const centroid = entity.polygon.reduce(
-				(acc, [px, py]) => [acc[0] + px, acc[1] + py],
-				[0, 0] as [number, number],
-			);
-			x = centroid[0] / entity.polygon.length;
-			y = centroid[1] / entity.polygon.length;
-			text = formatArea(polygonArea(entity.polygon), units);
-			break;
-		}
-		case "door":
-		case "window":
-			x = entity.x;
-			y = entity.y - 12 / zoom;
-			text = formatLength(entity.width, units);
-			break;
-		case "furniture":
-		case "sink":
-		case "shower":
-		case "bathtub":
-			x = entity.x + entity.width / 2;
-			y = entity.y + entity.height + 14 / zoom;
-			text = `${formatLength(entity.width, units)} × ${formatLength(entity.height, units)}`;
-			break;
-		case "stairs":
-			x = entity.x + entity.width / 2;
-			y = entity.y - 6 / zoom;
-			text = `${formatLength(entity.width, units)} × ${formatLength(entity.height, units)}`;
-			break;
-		default:
-			return null;
-	}
-
-	return (
-		<text
-			x={x}
-			y={y}
-			textAnchor="middle"
-			fontSize={fontSize}
-			fontWeight={600}
-			fill="#2563eb"
-			className="pointer-events-none select-none"
-			style={{ paintOrder: "stroke", stroke: "white", strokeWidth: 3 / zoom }}
-		>
-			{text}
-		</text>
-	);
-}
-
 function MeasureOverlay({
 	start,
 	end,
 	zoom,
-	units,
 }: {
 	start: { x: number; y: number };
 	end: { x: number; y: number };
 	zoom: number;
-	units: string;
 }) {
 	const dx = end.x - start.x;
 	const dy = end.y - start.y;
-	const distanceRaw = Math.sqrt(dx * dx + dy * dy);
-	const label = formatLength(distanceRaw, units);
+	const distanceCm = Math.sqrt(dx * dx + dy * dy);
+	const distanceM = distanceCm / 100;
+	const label =
+		distanceCm >= 100
+			? `${distanceM.toFixed(2)} m`
+			: `${Math.round(distanceCm)} cm`;
 
 	const midX = (start.x + end.x) / 2;
 	const midY = (start.y + end.y) / 2;
 	// Offset the label perpendicular to the line
-	const perpX = -dy / (distanceRaw || 1);
-	const perpY = dx / (distanceRaw || 1);
+	const perpX = -dy / (distanceCm || 1);
+	const perpY = dx / (distanceCm || 1);
 	const labelOffset = 14 / zoom;
 	const labelX = midX + perpX * labelOffset;
 	const labelY = midY + perpY * labelOffset;
@@ -1673,7 +1576,7 @@ function MeasureOverlay({
 				strokeWidth={1 / zoom}
 			/>
 			{/* Distance label background */}
-			{distanceRaw > 0 && (
+			{distanceCm > 0 && (
 				<>
 					<rect
 						x={labelX - label.length * fontSize * 0.35}

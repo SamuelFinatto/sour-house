@@ -19,8 +19,6 @@ import {
 	Toilet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { distance } from "@/lib/geometry";
-import { formatLength } from "@/lib/units";
 import type { Entity } from "@/types/entities";
 import type { LayerVisibility } from "@/types/floor";
 
@@ -28,7 +26,6 @@ interface EntitiesPanelProps {
 	entities: Entity[];
 	visibleLayers: LayerVisibility;
 	selectedEntityIds: string[];
-	units: string;
 	onSelect: (id: string | null) => void;
 	onMove: (id: string, direction: "up" | "down" | "top" | "bottom") => void;
 }
@@ -82,36 +79,10 @@ function entityLabel(entity: Entity): string {
 	}
 }
 
-/** Formats an entity's dimensions in meters (or the floor's units), when applicable. */
-function entityDimensions(entity: Entity, units: string): string | null {
-	switch (entity.type) {
-		case "wall":
-			return formatLength(
-				distance(
-					{ x: entity.x1, y: entity.y1 },
-					{ x: entity.x2, y: entity.y2 },
-				),
-				units,
-			);
-		case "door":
-		case "window":
-			return formatLength(entity.width, units);
-		case "furniture":
-		case "sink":
-		case "shower":
-		case "bathtub":
-		case "stairs":
-			return `${formatLength(entity.width, units)} × ${formatLength(entity.height, units)}`;
-		default:
-			return null;
-	}
-}
-
 export function EntitiesPanel({
 	entities,
 	visibleLayers,
 	selectedEntityIds,
-	units,
 	onSelect,
 	onMove,
 }: EntitiesPanelProps) {
@@ -131,7 +102,6 @@ export function EntitiesPanel({
 				<div className="space-y-0.5 max-h-60 overflow-y-auto">
 					{visibleEntities.map((entity, index) => {
 						const isSelected = selectedEntityIds.includes(entity.id);
-						const dimensions = entityDimensions(entity, units);
 						return (
 							<div key={entity.id} className="flex items-center gap-0.5">
 								<Button
@@ -144,11 +114,6 @@ export function EntitiesPanel({
 									<span className="flex-1 text-left text-xs truncate">
 										{entityLabel(entity)}
 									</span>
-									{dimensions && (
-										<span className="text-[10px] text-muted-foreground shrink-0">
-											{dimensions}
-										</span>
-									)}
 									<span className="text-[10px] text-muted-foreground capitalize">
 										{entity.layer}
 									</span>

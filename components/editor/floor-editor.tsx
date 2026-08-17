@@ -16,7 +16,6 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useEditor } from "@/hooks/use-editor";
 import { useFloor } from "@/hooks/use-floor";
-import { apiUrl } from "@/lib/api";
 import { fitViewport } from "@/lib/geometry";
 import type { Entity } from "@/types/entities";
 import type { FloorUnderlay } from "@/types/floor";
@@ -58,7 +57,7 @@ export function FloorEditor({ projectId, floorId }: FloorEditorProps) {
 		(underlay: FloorUnderlay | undefined) => {
 			if (!floor) return;
 			const updated = { ...floor, entities: editor.entities, underlay };
-			fetch(apiUrl(`/api/projects/${projectId}/floors/${floorId}`), {
+			fetch(`/api/projects/${projectId}/floors/${floorId}`, {
 				method: "PUT",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify(updated),
@@ -73,14 +72,11 @@ export function FloorEditor({ projectId, floorId }: FloorEditorProps) {
 	const handleSave = useCallback(async () => {
 		if (!floor) return;
 		try {
-			const res = await fetch(
-				apiUrl(`/api/projects/${projectId}/floors/${floorId}`),
-				{
-					method: "PUT",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ ...floor, entities: editor.entities }),
-				},
-			);
+			const res = await fetch(`/api/projects/${projectId}/floors/${floorId}`, {
+				method: "PUT",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ ...floor, entities: editor.entities }),
+			});
 			if (!res.ok) throw new Error("Failed to save");
 			mutate();
 			toast.success("Floor saved");
@@ -128,7 +124,7 @@ export function FloorEditor({ projectId, floorId }: FloorEditorProps) {
 					return;
 				}
 				// Migrate the floor data to current schema version
-				const res = await fetch(apiUrl("/api/migrate"), {
+				const res = await fetch("/api/migrate", {
 					method: "PUT",
 					headers: { "Content-Type": "application/json" },
 					body: text,
@@ -330,14 +326,11 @@ export function FloorEditor({ projectId, floorId }: FloorEditorProps) {
 						gridEnabled={editor.state.gridEnabled}
 						snapEnabled={editor.state.snapEnabled}
 						gridSize={floor.grid.size}
-						units={floor.units}
 						selectedEntityIds={editor.state.selectedEntityIds}
 						underlay={floor.underlay}
 						underlayUrl={
 							floor.underlay
-								? apiUrl(
-										`/api/projects/${projectId}/assets/${floor.underlay.assetId}`,
-									)
+								? `/api/projects/${projectId}/assets/${floor.underlay.assetId}`
 								: undefined
 						}
 						onViewportChange={editor.setViewport}
@@ -368,7 +361,6 @@ export function FloorEditor({ projectId, floorId }: FloorEditorProps) {
 						entities={editor.entities}
 						visibleLayers={editor.state.visibleLayers}
 						selectedEntityIds={editor.state.selectedEntityIds}
-						units={floor.units}
 						onSelect={editor.selectEntity}
 						onMove={editor.moveEntity}
 					/>

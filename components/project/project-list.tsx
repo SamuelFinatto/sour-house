@@ -8,7 +8,6 @@ import { ProjectCard } from "@/components/project/project-card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProjects } from "@/hooks/use-projects";
-import { apiUrl } from "@/lib/api";
 
 export function ProjectList() {
 	const { projects, isLoading, mutate } = useProjects();
@@ -28,7 +27,7 @@ export function ProjectList() {
 					toast.error("Invalid project file");
 					return;
 				}
-				const res = await fetch(apiUrl("/api/projects/import"), {
+				const res = await fetch("/api/projects/import", {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
 					body: text,
@@ -54,7 +53,7 @@ export function ProjectList() {
 		name: string;
 		address?: string;
 	}) {
-		await fetch(apiUrl("/api/projects"), {
+		await fetch("/api/projects", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify(project),
@@ -63,7 +62,7 @@ export function ProjectList() {
 	}
 
 	async function handleDelete(id: string) {
-		await fetch(apiUrl(`/api/projects/${id}`), { method: "DELETE" });
+		await fetch(`/api/projects/${id}`, { method: "DELETE" });
 		mutate();
 	}
 

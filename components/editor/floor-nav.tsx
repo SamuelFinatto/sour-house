@@ -4,7 +4,8 @@ import { ChevronLeft, Layers } from "lucide-react";
 import Link from "next/link";
 import useSWR from "swr";
 import { Button } from "@/components/ui/button";
-import { fetcher } from "@/lib/api";
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 interface FloorNavProps {
 	projectId: string;

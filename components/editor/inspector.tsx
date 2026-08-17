@@ -15,8 +15,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { apiUrl } from "@/lib/api";
-import { distance, polygonArea, polygonPerimeter } from "@/lib/geometry";
+import { polygonArea, polygonPerimeter } from "@/lib/geometry";
 import { formatArea, formatLength } from "@/lib/units";
 import type {
 	DoorEntity,
@@ -29,26 +28,6 @@ import type {
 	WallEntity,
 	WindowEntity,
 } from "@/types/entities";
-
-/** Field label with a live "= X.XX m" hint next to it for length-valued inputs. */
-function FieldLabel({
-	text,
-	value,
-	units,
-}: {
-	text: string;
-	value: number;
-	units: string;
-}) {
-	return (
-		<div className="flex items-baseline justify-between gap-1">
-			<Label className="text-xs">{text}</Label>
-			<span className="text-[10px] text-muted-foreground">
-				{formatLength(value, units)}
-			</span>
-		</div>
-	);
-}
 
 interface InspectorProps {
 	entity: Entity | null;
@@ -101,7 +80,6 @@ export function Inspector({
 				{entity.type === "wall" && (
 					<WallFields
 						entity={entity}
-						units={units}
 						onUpdate={(u) => onUpdate(entity.id, u)}
 					/>
 				)}
@@ -116,7 +94,6 @@ export function Inspector({
 				{(entity.type === "door" || entity.type === "window") && (
 					<OpeningFields
 						entity={entity}
-						units={units}
 						onUpdate={(u) => onUpdate(entity.id, u)}
 					/>
 				)}
@@ -129,14 +106,12 @@ export function Inspector({
 				{entity.type === "furniture" && (
 					<FurnitureFields
 						entity={entity}
-						units={units}
 						onUpdate={(u) => onUpdate(entity.id, u)}
 					/>
 				)}
 				{entity.type === "stairs" && (
 					<StairsFields
 						entity={entity}
-						units={units}
 						onUpdate={(u) => onUpdate(entity.id, u)}
 					/>
 				)}
@@ -152,14 +127,12 @@ export function Inspector({
 								label?: string;
 							}
 						}
-						units={units}
 						onUpdate={(u) => onUpdate(entity.id, u)}
 					/>
 				)}
 				{entity.type === "toilet" && (
 					<PlumbingPointFields
 						entity={entity}
-						units={units}
 						onUpdate={(u) => onUpdate(entity.id, u)}
 					/>
 				)}
@@ -168,7 +141,6 @@ export function Inspector({
 					entity.type === "annotation") && (
 					<PointFields
 						entity={entity}
-						units={units}
 						onUpdate={(u) => onUpdate(entity.id, u)}
 					/>
 				)}
@@ -179,28 +151,16 @@ export function Inspector({
 
 function WallFields({
 	entity,
-	units,
 	onUpdate,
 }: {
 	entity: WallEntity;
-	units: string;
 	onUpdate: (u: Partial<WallEntity>) => void;
 }) {
-	const length = distance(
-		{ x: entity.x1, y: entity.y1 },
-		{ x: entity.x2, y: entity.y2 },
-	);
 	return (
 		<>
-			<div>
-				<Label className="text-xs">Length</Label>
-				<p className="text-xs text-muted-foreground">
-					{formatLength(length, units)}
-				</p>
-			</div>
 			<div className="grid grid-cols-2 gap-2">
 				<div>
-					<FieldLabel text="X1" value={entity.x1} units={units} />
+					<Label className="text-xs">X1</Label>
 					<Input
 						type="number"
 						value={entity.x1}
@@ -209,7 +169,7 @@ function WallFields({
 					/>
 				</div>
 				<div>
-					<FieldLabel text="Y1" value={entity.y1} units={units} />
+					<Label className="text-xs">Y1</Label>
 					<Input
 						type="number"
 						value={entity.y1}
@@ -218,7 +178,7 @@ function WallFields({
 					/>
 				</div>
 				<div>
-					<FieldLabel text="X2" value={entity.x2} units={units} />
+					<Label className="text-xs">X2</Label>
 					<Input
 						type="number"
 						value={entity.x2}
@@ -227,7 +187,7 @@ function WallFields({
 					/>
 				</div>
 				<div>
-					<FieldLabel text="Y2" value={entity.y2} units={units} />
+					<Label className="text-xs">Y2</Label>
 					<Input
 						type="number"
 						value={entity.y2}
@@ -237,7 +197,7 @@ function WallFields({
 				</div>
 			</div>
 			<div>
-				<FieldLabel text="Thickness" value={entity.thickness} units={units} />
+				<Label className="text-xs">Thickness</Label>
 				<Input
 					type="number"
 					value={entity.thickness}
@@ -275,7 +235,7 @@ function RoomFields({
 		try {
 			const form = new FormData();
 			form.append("file", file);
-			const res = await fetch(apiUrl(`/api/projects/${projectId}/assets`), {
+			const res = await fetch(`/api/projects/${projectId}/assets`, {
 				method: "POST",
 				body: form,
 			});
@@ -445,9 +405,7 @@ function RoomFields({
 									onClick={() => setViewerImage(img)}
 								>
 									<img
-										src={apiUrl(
-											`/api/projects/${projectId}/assets/${img.assetId}`,
-										)}
+										src={`/api/projects/${projectId}/assets/${img.assetId}`}
 										alt={img.name}
 										className="w-full h-24 object-contain bg-muted"
 									/>
@@ -462,9 +420,7 @@ function RoomFields({
 				<ImageViewerDialog
 					open
 					title={viewerImage.name}
-					src={apiUrl(
-						`/api/projects/${projectId}/assets/${viewerImage.assetId}`,
-					)}
+					src={`/api/projects/${projectId}/assets/${viewerImage.assetId}`}
 					onClose={() => setViewerImage(null)}
 				/>
 			)}
@@ -474,18 +430,16 @@ function RoomFields({
 
 function OpeningFields({
 	entity,
-	units,
 	onUpdate,
 }: {
 	entity: DoorEntity | WindowEntity;
-	units: string;
 	onUpdate: (u: Partial<DoorEntity | WindowEntity>) => void;
 }) {
 	return (
 		<>
 			<div className="grid grid-cols-2 gap-2">
 				<div>
-					<FieldLabel text="X" value={entity.x} units={units} />
+					<Label className="text-xs">X</Label>
 					<Input
 						type="number"
 						value={entity.x}
@@ -494,7 +448,7 @@ function OpeningFields({
 					/>
 				</div>
 				<div>
-					<FieldLabel text="Y" value={entity.y} units={units} />
+					<Label className="text-xs">Y</Label>
 					<Input
 						type="number"
 						value={entity.y}
@@ -505,7 +459,7 @@ function OpeningFields({
 			</div>
 			<div className="grid grid-cols-2 gap-2">
 				<div>
-					<FieldLabel text="Width" value={entity.width} units={units} />
+					<Label className="text-xs">Width</Label>
 					<Input
 						type="number"
 						value={entity.width}
@@ -586,22 +540,13 @@ const FURNITURE_KIND_LABELS: Record<FurnitureKind, string> = {
 
 function FurnitureFields({
 	entity,
-	units,
 	onUpdate,
 }: {
 	entity: FurnitureEntity;
-	units: string;
 	onUpdate: (u: Partial<FurnitureEntity>) => void;
 }) {
 	return (
 		<>
-			<div>
-				<Label className="text-xs">Size</Label>
-				<p className="text-xs text-muted-foreground">
-					{formatLength(entity.width, units)} ×{" "}
-					{formatLength(entity.height, units)}
-				</p>
-			</div>
 			<div>
 				<Label className="text-xs">Type</Label>
 				<Select
@@ -632,7 +577,7 @@ function FurnitureFields({
 			</div>
 			<div className="grid grid-cols-2 gap-2">
 				<div>
-					<FieldLabel text="Width" value={entity.width} units={units} />
+					<Label className="text-xs">Width</Label>
 					<Input
 						type="number"
 						value={entity.width}
@@ -641,7 +586,7 @@ function FurnitureFields({
 					/>
 				</div>
 				<div>
-					<FieldLabel text="Height" value={entity.height} units={units} />
+					<Label className="text-xs">Height</Label>
 					<Input
 						type="number"
 						value={entity.height}
@@ -656,25 +601,16 @@ function FurnitureFields({
 
 function StairsFields({
 	entity,
-	units,
 	onUpdate,
 }: {
 	entity: StairsEntity;
-	units: string;
 	onUpdate: (u: Partial<StairsEntity>) => void;
 }) {
 	return (
 		<>
-			<div>
-				<Label className="text-xs">Size</Label>
-				<p className="text-xs text-muted-foreground">
-					{formatLength(entity.width, units)} ×{" "}
-					{formatLength(entity.height, units)}
-				</p>
-			</div>
 			<div className="grid grid-cols-2 gap-2">
 				<div>
-					<FieldLabel text="X" value={entity.x} units={units} />
+					<Label className="text-xs">X</Label>
 					<Input
 						type="number"
 						value={entity.x}
@@ -683,7 +619,7 @@ function StairsFields({
 					/>
 				</div>
 				<div>
-					<FieldLabel text="Y" value={entity.y} units={units} />
+					<Label className="text-xs">Y</Label>
 					<Input
 						type="number"
 						value={entity.y}
@@ -694,7 +630,7 @@ function StairsFields({
 			</div>
 			<div className="grid grid-cols-2 gap-2">
 				<div>
-					<FieldLabel text="Width" value={entity.width} units={units} />
+					<Label className="text-xs">Width</Label>
 					<Input
 						type="number"
 						value={entity.width}
@@ -703,7 +639,7 @@ function StairsFields({
 					/>
 				</div>
 				<div>
-					<FieldLabel text="Height" value={entity.height} units={units} />
+					<Label className="text-xs">Height</Label>
 					<Input
 						type="number"
 						value={entity.height}
@@ -752,17 +688,15 @@ function StairsFields({
 
 function PointFields({
 	entity,
-	units,
 	onUpdate,
 }: {
 	entity: Entity & { x: number; y: number };
-	units: string;
 	onUpdate: (u: Partial<Entity>) => void;
 }) {
 	return (
 		<div className="grid grid-cols-2 gap-2">
 			<div>
-				<FieldLabel text="X" value={entity.x} units={units} />
+				<Label className="text-xs">X</Label>
 				<Input
 					type="number"
 					value={entity.x}
@@ -773,7 +707,7 @@ function PointFields({
 				/>
 			</div>
 			<div>
-				<FieldLabel text="Y" value={entity.y} units={units} />
+				<Label className="text-xs">Y</Label>
 				<Input
 					type="number"
 					value={entity.y}
@@ -789,7 +723,6 @@ function PointFields({
 
 function PlumbingFixtureFields({
 	entity,
-	units,
 	onUpdate,
 }: {
 	entity: Entity & {
@@ -798,21 +731,13 @@ function PlumbingFixtureFields({
 		rotation: number;
 		label?: string;
 	};
-	units: string;
 	onUpdate: (u: Partial<Entity>) => void;
 }) {
 	return (
 		<>
-			<div>
-				<Label className="text-xs">Size</Label>
-				<p className="text-xs text-muted-foreground">
-					{formatLength(entity.width, units)} ×{" "}
-					{formatLength(entity.height, units)}
-				</p>
-			</div>
 			<div className="grid grid-cols-2 gap-2">
 				<div>
-					<FieldLabel text="Width" value={entity.width} units={units} />
+					<Label className="text-xs">Width</Label>
 					<Input
 						type="number"
 						value={entity.width}
@@ -823,7 +748,7 @@ function PlumbingFixtureFields({
 					/>
 				</div>
 				<div>
-					<FieldLabel text="Height" value={entity.height} units={units} />
+					<Label className="text-xs">Height</Label>
 					<Input
 						type="number"
 						value={entity.height}
@@ -861,18 +786,16 @@ function PlumbingFixtureFields({
 
 function PlumbingPointFields({
 	entity,
-	units,
 	onUpdate,
 }: {
 	entity: Entity & { x: number; y: number; rotation: number; label?: string };
-	units: string;
 	onUpdate: (u: Partial<Entity>) => void;
 }) {
 	return (
 		<>
 			<div className="grid grid-cols-2 gap-2">
 				<div>
-					<FieldLabel text="X" value={entity.x} units={units} />
+					<Label className="text-xs">X</Label>
 					<Input
 						type="number"
 						value={entity.x}
@@ -883,7 +806,7 @@ function PlumbingPointFields({
 					/>
 				</div>
 				<div>
-					<FieldLabel text="Y" value={entity.y} units={units} />
+					<Label className="text-xs">Y</Label>
 					<Input
 						type="number"
 						value={entity.y}
