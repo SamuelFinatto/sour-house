@@ -15,8 +15,8 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { polygonArea, polygonPerimeter } from "@/lib/geometry";
-import { formatArea, formatLength } from "@/lib/units";
+import { distance, polygonArea, polygonPerimeter } from "@/lib/geometry";
+import { formatArea, formatLength, fromMeters, toMeters } from "@/lib/units";
 import type {
 	DoorEntity,
 	Entity,
@@ -80,6 +80,7 @@ export function Inspector({
 				{entity.type === "wall" && (
 					<WallFields
 						entity={entity}
+						units={units}
 						onUpdate={(u) => onUpdate(entity.id, u)}
 					/>
 				)}
@@ -94,6 +95,7 @@ export function Inspector({
 				{(entity.type === "door" || entity.type === "window") && (
 					<OpeningFields
 						entity={entity}
+						units={units}
 						onUpdate={(u) => onUpdate(entity.id, u)}
 					/>
 				)}
@@ -106,12 +108,14 @@ export function Inspector({
 				{entity.type === "furniture" && (
 					<FurnitureFields
 						entity={entity}
+						units={units}
 						onUpdate={(u) => onUpdate(entity.id, u)}
 					/>
 				)}
 				{entity.type === "stairs" && (
 					<StairsFields
 						entity={entity}
+						units={units}
 						onUpdate={(u) => onUpdate(entity.id, u)}
 					/>
 				)}
@@ -127,6 +131,7 @@ export function Inspector({
 								label?: string;
 							}
 						}
+						units={units}
 						onUpdate={(u) => onUpdate(entity.id, u)}
 					/>
 				)}
@@ -149,13 +154,55 @@ export function Inspector({
 	);
 }
 
+function MeterField({
+	label,
+	valueRaw,
+	units,
+	onChangeRaw,
+}: {
+	label: string;
+	valueRaw: number;
+	units: string;
+	onChangeRaw: (raw: number) => void;
+}) {
+	return (
+		<div>
+			<Label className="text-xs">{label} (m)</Label>
+			<Input
+				type="number"
+				step="0.01"
+				value={Number(toMeters(valueRaw, units).toFixed(2))}
+				onChange={(e) => {
+					const meters = Number(e.target.value);
+					if (Number.isNaN(meters)) return;
+					onChangeRaw(fromMeters(meters, units));
+				}}
+				className="h-6 text-xs"
+			/>
+		</div>
+	);
+}
+
 function WallFields({
 	entity,
+	units,
 	onUpdate,
 }: {
 	entity: WallEntity;
+	units: string;
 	onUpdate: (u: Partial<WallEntity>) => void;
 }) {
+	const length = distance(
+		{ x: entity.x1, y: entity.y1 },
+		{ x: entity.x2, y: entity.y2 },
+	);
+	function setLength(newLength: number) {
+		const angle = Math.atan2(entity.y2 - entity.y1, entity.x2 - entity.x1);
+		onUpdate({
+			x2: entity.x1 + newLength * Math.cos(angle),
+			y2: entity.y1 + newLength * Math.sin(angle),
+		});
+	}
 	return (
 		<>
 			<div className="grid grid-cols-2 gap-2">
@@ -196,6 +243,12 @@ function WallFields({
 					/>
 				</div>
 			</div>
+			<MeterField
+				label="Length"
+				valueRaw={length}
+				units={units}
+				onChangeRaw={setLength}
+			/>
 			<div>
 				<Label className="text-xs">Thickness</Label>
 				<Input
@@ -430,9 +483,11 @@ function RoomFields({
 
 function OpeningFields({
 	entity,
+	units,
 	onUpdate,
 }: {
 	entity: DoorEntity | WindowEntity;
+	units: string;
 	onUpdate: (u: Partial<DoorEntity | WindowEntity>) => void;
 }) {
 	return (
@@ -465,6 +520,12 @@ function OpeningFields({
 						value={entity.width}
 						onChange={(e) => onUpdate({ width: Number(e.target.value) })}
 						className="h-7 text-xs"
+					/>
+					<MeterField
+						label="Width"
+						valueRaw={entity.width}
+						units={units}
+						onChangeRaw={(width) => onUpdate({ width })}
 					/>
 				</div>
 				<div>
@@ -540,9 +601,11 @@ const FURNITURE_KIND_LABELS: Record<FurnitureKind, string> = {
 
 function FurnitureFields({
 	entity,
+	units,
 	onUpdate,
 }: {
 	entity: FurnitureEntity;
+	units: string;
 	onUpdate: (u: Partial<FurnitureEntity>) => void;
 }) {
 	return (
@@ -584,6 +647,12 @@ function FurnitureFields({
 						onChange={(e) => onUpdate({ width: Number(e.target.value) })}
 						className="h-7 text-xs"
 					/>
+					<MeterField
+						label="Width"
+						valueRaw={entity.width}
+						units={units}
+						onChangeRaw={(width) => onUpdate({ width })}
+					/>
 				</div>
 				<div>
 					<Label className="text-xs">Height</Label>
@@ -593,6 +662,12 @@ function FurnitureFields({
 						onChange={(e) => onUpdate({ height: Number(e.target.value) })}
 						className="h-7 text-xs"
 					/>
+					<MeterField
+						label="Height"
+						valueRaw={entity.height}
+						units={units}
+						onChangeRaw={(height) => onUpdate({ height })}
+					/>
 				</div>
 			</div>
 		</>
@@ -601,9 +676,11 @@ function FurnitureFields({
 
 function StairsFields({
 	entity,
+	units,
 	onUpdate,
 }: {
 	entity: StairsEntity;
+	units: string;
 	onUpdate: (u: Partial<StairsEntity>) => void;
 }) {
 	return (
@@ -637,6 +714,12 @@ function StairsFields({
 						onChange={(e) => onUpdate({ width: Number(e.target.value) })}
 						className="h-7 text-xs"
 					/>
+					<MeterField
+						label="Width"
+						valueRaw={entity.width}
+						units={units}
+						onChangeRaw={(width) => onUpdate({ width })}
+					/>
 				</div>
 				<div>
 					<Label className="text-xs">Height</Label>
@@ -645,6 +728,12 @@ function StairsFields({
 						value={entity.height}
 						onChange={(e) => onUpdate({ height: Number(e.target.value) })}
 						className="h-7 text-xs"
+					/>
+					<MeterField
+						label="Height"
+						valueRaw={entity.height}
+						units={units}
+						onChangeRaw={(height) => onUpdate({ height })}
 					/>
 				</div>
 			</div>
@@ -723,6 +812,7 @@ function PointFields({
 
 function PlumbingFixtureFields({
 	entity,
+	units,
 	onUpdate,
 }: {
 	entity: Entity & {
@@ -731,6 +821,7 @@ function PlumbingFixtureFields({
 		rotation: number;
 		label?: string;
 	};
+	units: string;
 	onUpdate: (u: Partial<Entity>) => void;
 }) {
 	return (
@@ -746,6 +837,12 @@ function PlumbingFixtureFields({
 						}
 						className="h-7 text-xs"
 					/>
+					<MeterField
+						label="Width"
+						valueRaw={entity.width}
+						units={units}
+						onChangeRaw={(width) => onUpdate({ width } as Partial<Entity>)}
+					/>
 				</div>
 				<div>
 					<Label className="text-xs">Height</Label>
@@ -756,6 +853,12 @@ function PlumbingFixtureFields({
 							onUpdate({ height: Number(e.target.value) } as Partial<Entity>)
 						}
 						className="h-7 text-xs"
+					/>
+					<MeterField
+						label="Height"
+						valueRaw={entity.height}
+						units={units}
+						onChangeRaw={(height) => onUpdate({ height } as Partial<Entity>)}
 					/>
 				</div>
 			</div>

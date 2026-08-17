@@ -1,9 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { generateId, screenToCanvas, snapToGrid } from "@/lib/geometry";
+import {
+	distance,
+	generateId,
+	polygonArea,
+	screenToCanvas,
+	snapToGrid,
+} from "@/lib/geometry";
+import { formatArea, formatLength } from "@/lib/units";
 import type { Tool, Viewport } from "@/types/editor";
-import type { Entity } from "@/types/entities";
+import type { Entity, WallEntity } from "@/types/entities";
 import type { FloorUnderlay, LayerVisibility } from "@/types/floor";
 
 interface CanvasProps {
@@ -15,6 +22,7 @@ interface CanvasProps {
 	snapEnabled: boolean;
 	gridSize: number;
 	selectedEntityIds: string[];
+	units: string;
 	underlay?: FloorUnderlay;
 	underlayUrl?: string;
 	onViewportChange: (viewport: Viewport) => void;
@@ -24,6 +32,161 @@ interface CanvasProps {
 }
 
 const CANVAS_SIZE = 2000;
+const WALL_SNAP_DISTANCE = 20;
+
+// ponytail: nearest-endpoint snap only, no shared-vertex graph — if a wall
+// moves later the joined corner doesn't follow; upgrade to a vertex-node
+// model if walls need to stay connected after the fact.
+function findWallSnapPoint(
+	entities: Entity[],
+	pt: { x: number; y: number },
+	excludeWallId?: string,
+): { x: number; y: number } | null {
+	let best: { x: number; y: number } | null = null;
+	let bestDist = WALL_SNAP_DISTANCE;
+	for (const e of entities) {
+		if (e.type !== "wall" || e.id === excludeWallId) continue;
+		for (const [ex, ey] of [
+			[e.x1, e.y1],
+			[e.x2, e.y2],
+		] as [number, number][]) {
+			const d = Math.hypot(ex - pt.x, ey - pt.y);
+			if (d < bestDist) {
+				bestDist = d;
+				best = { x: ex, y: ey };
+			}
+		}
+	}
+	return best;
+}
+
+/** The 4 corners of a wall's thickness rectangle, as an SVG points string. */
+function wallPolygonPoints(wall: WallEntity): string {
+	const dx = wall.x2 - wall.x1;
+	const dy = wall.y2 - wall.y1;
+	const len = Math.hypot(dx, dy) || 1;
+	const nx = (-dy / len) * (wall.thickness / 2);
+	const ny = (dx / len) * (wall.thickness / 2);
+	return [
+		[wall.x1 + nx, wall.y1 + ny],
+		[wall.x2 + nx, wall.y2 + ny],
+		[wall.x2 - nx, wall.y2 - ny],
+		[wall.x1 - nx, wall.y1 - ny],
+	]
+		.map(([x, y]) => `${x},${y}`)
+		.join(" ");
+}
+
+interface WallChain {
+	points: { x: number; y: number }[];
+	closed: boolean;
+	thickness: number;
+}
+
+const WALL_JOIN_EPS = 0.5;
+
+function samePoint(
+	a: { x: number; y: number },
+	b: { x: number; y: number },
+): boolean {
+	return Math.hypot(a.x - b.x, a.y - b.y) < WALL_JOIN_EPS;
+}
+
+// Groups walls that meet end-to-end (same coordinates, same thickness) into
+// continuous chains so the whole chain can be drawn as one stroked SVG path.
+// A single path lets the browser compute correct miter joins at every
+// interior corner for free — no manual corner-trim geometry needed. Chains
+// only extend through points where exactly one other wall of matching
+// thickness continues; T-junctions and thickness changes end a chain there
+// (that end falls back to a plain square cap, same overlap-fill as before).
+function buildWallChains(walls: WallEntity[]): WallChain[] {
+	function otherEnd(wall: WallEntity, point: { x: number; y: number }) {
+		return samePoint({ x: wall.x1, y: wall.y1 }, point)
+			? { x: wall.x2, y: wall.y2 }
+			: { x: wall.x1, y: wall.y1 };
+	}
+
+	const visited = new Set<string>();
+	const chains: WallChain[] = [];
+
+	function findNext(
+		point: { x: number; y: number },
+		thickness: number,
+	): WallEntity | null {
+		const candidates = walls.filter(
+			(w) =>
+				!visited.has(w.id) &&
+				w.thickness === thickness &&
+				(samePoint({ x: w.x1, y: w.y1 }, point) ||
+					samePoint({ x: w.x2, y: w.y2 }, point)),
+		);
+		return candidates.length === 1 ? candidates[0] : null;
+	}
+
+	for (const wall of walls) {
+		if (visited.has(wall.id)) continue;
+		visited.add(wall.id);
+		const points = [
+			{ x: wall.x1, y: wall.y1 },
+			{ x: wall.x2, y: wall.y2 },
+		];
+
+		let tail = points[points.length - 1];
+		for (;;) {
+			const next = findNext(tail, wall.thickness);
+			if (!next) break;
+			visited.add(next.id);
+			tail = otherEnd(next, tail);
+			points.push(tail);
+		}
+
+		let head = points[0];
+		for (;;) {
+			const prev = findNext(head, wall.thickness);
+			if (!prev) break;
+			visited.add(prev.id);
+			head = otherEnd(prev, head);
+			points.unshift(head);
+		}
+
+		const closed =
+			points.length > 2 && samePoint(points[0], points[points.length - 1]);
+		chains.push({
+			points: closed ? points.slice(0, -1) : points,
+			closed,
+			thickness: wall.thickness,
+		});
+	}
+
+	return chains;
+}
+
+function WallChainShape({ chain }: { chain: WallChain }) {
+	const d =
+		chain.points
+			.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`)
+			.join(" ") + (chain.closed ? " Z" : "");
+	return (
+		<g style={{ pointerEvents: "none" }}>
+			<path
+				d={d}
+				fill="none"
+				stroke="#1a1a1a"
+				strokeWidth={chain.thickness}
+				strokeLinejoin="miter"
+				strokeLinecap="square"
+			/>
+			<path
+				d={d}
+				fill="none"
+				stroke="white"
+				strokeWidth={Math.max(chain.thickness - 3, 1)}
+				strokeLinejoin="miter"
+				strokeLinecap="square"
+			/>
+		</g>
+	);
+}
 
 export function Canvas({
 	entities,
@@ -34,6 +197,7 @@ export function Canvas({
 	snapEnabled,
 	gridSize,
 	selectedEntityIds,
+	units,
 	underlay,
 	underlayUrl,
 	onViewportChange,
@@ -155,14 +319,16 @@ export function Canvas({
 		}
 		if (activeTool === "wall") {
 			if (start.x === end.x && start.y === end.y) return;
+			const snappedStart = findWallSnapPoint(entities, start) ?? start;
+			const snappedEnd = findWallSnapPoint(entities, end) ?? end;
 			onAddEntity({
 				id: generateId(),
 				type: "wall",
 				layer: "structure",
-				x1: start.x,
-				y1: start.y,
-				x2: end.x,
-				y2: end.y,
+				x1: snappedStart.x,
+				y1: snappedStart.y,
+				x2: snappedEnd.x,
+				y2: snappedEnd.y,
 				thickness: 20,
 			});
 		} else if (activeTool === "door" || activeTool === "window") {
@@ -311,6 +477,18 @@ export function Canvas({
 	}
 
 	function handleMouseDown(e: React.MouseEvent) {
+		if (e.button === 1) {
+			e.preventDefault();
+			setIsPanning(true);
+			panStartRef.current = {
+				x: e.clientX,
+				y: e.clientY,
+				vx: viewport.x,
+				vy: viewport.y,
+			};
+			return;
+		}
+
 		if (activeTool === "pan") {
 			setIsPanning(true);
 			panStartRef.current = {
@@ -376,15 +554,16 @@ export function Canvas({
 				);
 				onUpdateEntity(entity.id, { polygon: newPolygon } as Partial<Entity>);
 			} else if (entity?.type === "wall") {
+				const snapped = findWallSnapPoint(entities, pt, entity.id) ?? pt;
 				if (vertexDrag.vertexIndex === 0) {
 					onUpdateEntity(entity.id, {
-						x1: pt.x,
-						y1: pt.y,
+						x1: snapped.x,
+						y1: snapped.y,
 					} as Partial<Entity>);
 				} else {
 					onUpdateEntity(entity.id, {
-						x2: pt.x,
-						y2: pt.y,
+						x2: snapped.x,
+						y2: snapped.y,
 					} as Partial<Entity>);
 				}
 			}
@@ -637,6 +816,26 @@ export function Canvas({
 	const visibleEntities = entities.filter(
 		(e) => visibleLayers[e.layer as keyof LayerVisibility],
 	);
+	const visibleWalls = visibleEntities.filter(
+		(e): e is WallEntity => e.type === "wall",
+	);
+	const wallChains = buildWallChains(visibleWalls);
+	// Rough heuristic for which side of a wall is "outside": away from the
+	// average of every wall endpoint. Holds for a single convex-ish building
+	// footprint; breaks down for oddly-shaped or multi-wing floor plans.
+	const buildingCenter = (() => {
+		if (visibleWalls.length === 0) return { x: 0, y: 0 };
+		let sx = 0;
+		let sy = 0;
+		for (const w of visibleWalls) {
+			sx += w.x1 + w.x2;
+			sy += w.y1 + w.y2;
+		}
+		return {
+			x: sx / (visibleWalls.length * 2),
+			y: sy / (visibleWalls.length * 2),
+		};
+	})();
 
 	return (
 		<svg
@@ -699,14 +898,55 @@ export function Canvas({
 					</g>
 				)}
 
-				{/* Entities */}
-				{visibleEntities.map((entity) => (
-					<EntityRenderer
-						key={entity.id}
-						entity={entity}
-						isSelected={selectedEntityIds.includes(entity.id)}
-						onMouseDown={(e) => handleEntityMouseDown(e, entity.id)}
-						onClick={(e) => handleEntityClick(e, entity.id)}
+				{/* Wall bodies — chain-grouped so shared corners get a real
+				    mitered join instead of each wall drawing its own
+				    independent rectangle (which left overlapping spikes). */}
+				{wallChains.map((chain, i) => (
+					<WallChainShape key={`wallchain-${i}`} chain={chain} />
+				))}
+
+				{/* Wall click/select targets — invisible unless selected;
+				    the visible wall body is the chain shape above. */}
+				{visibleWalls.map((wall) => {
+					const isSelected = selectedEntityIds.includes(wall.id);
+					return (
+						<polygon
+							key={wall.id}
+							points={wallPolygonPoints(wall)}
+							fill={isSelected ? "rgba(37, 99, 235, 0.3)" : "transparent"}
+							stroke={isSelected ? "#2563eb" : "none"}
+							strokeWidth={isSelected ? 2.5 : 0}
+							onMouseDown={(e) => handleEntityMouseDown(e, wall.id)}
+							onClick={(e) => handleEntityClick(e, wall.id)}
+							className="cursor-pointer"
+						/>
+					);
+				})}
+
+				{/* Other entities */}
+				{visibleEntities
+					.filter((e) => e.type !== "wall")
+					.map((entity) => (
+						<EntityRenderer
+							key={entity.id}
+							entity={entity}
+							isSelected={selectedEntityIds.includes(entity.id)}
+							units={units}
+							zoom={viewport.zoom}
+							onMouseDown={(e) => handleEntityMouseDown(e, entity.id)}
+							onClick={(e) => handleEntityClick(e, entity.id)}
+						/>
+					))}
+
+				{/* Wall dimension chains (architect-plan style) */}
+				{visibleWalls.map((wall) => (
+					<WallDimensionLine
+						key={`dim-${wall.id}`}
+						wall={wall}
+						allWalls={visibleWalls}
+						buildingCenter={buildingCenter}
+						units={units}
+						zoom={viewport.zoom}
 					/>
 				))}
 
@@ -1009,11 +1249,15 @@ export function Canvas({
 function EntityRenderer({
 	entity,
 	isSelected,
+	units,
+	zoom,
 	onMouseDown,
 	onClick,
 }: {
 	entity: Entity;
 	isSelected: boolean;
+	units: string;
+	zoom: number;
 	onMouseDown: (e: React.MouseEvent) => void;
 	onClick: (e: React.MouseEvent) => void;
 }) {
@@ -1022,51 +1266,51 @@ function EntityRenderer({
 	const SELECT_FILL_STRONG = "rgba(37, 99, 235, 0.3)";
 
 	switch (entity.type) {
-		case "wall":
+		case "room": {
+			const cx =
+				entity.polygon.reduce((s, [x]) => s + x, 0) / entity.polygon.length;
+			const cy =
+				entity.polygon.reduce((s, [, y]) => s + y, 0) / entity.polygon.length;
+			const area = polygonArea(entity.polygon);
 			return (
 				<g
 					onMouseDown={onMouseDown}
 					onClick={onClick}
 					className="cursor-pointer"
 				>
-					{isSelected && (
-						<line
-							x1={entity.x1}
-							y1={entity.y1}
-							x2={entity.x2}
-							y2={entity.y2}
-							stroke={SELECT_COLOR}
-							strokeWidth={entity.thickness + 6}
-							strokeLinecap="round"
-							opacity={0.3}
-						/>
-					)}
-					<line
-						x1={entity.x1}
-						y1={entity.y1}
-						x2={entity.x2}
-						y2={entity.y2}
-						stroke="#333"
-						strokeWidth={entity.thickness}
-						strokeLinecap="round"
-					/>
+					<polygon
+						points={entity.polygon.map(([x, y]) => `${x},${y}`).join(" ")}
+						fill={isSelected ? SELECT_FILL : "rgba(0, 0, 0, 0.03)"}
+						stroke={isSelected ? SELECT_COLOR : "#666"}
+						strokeWidth={isSelected ? 2 : 1}
+						strokeDasharray={isSelected ? "none" : "6 3"}
+					>
+						<title>{entity.name}</title>
+					</polygon>
+					<text
+						x={cx}
+						y={cy - 7 / zoom}
+						textAnchor="middle"
+						fontSize={13 / zoom}
+						fontWeight={600}
+						fill="#333"
+						style={{ pointerEvents: "none", userSelect: "none" }}
+					>
+						{entity.name}
+					</text>
+					<text
+						x={cx}
+						y={cy + 9 / zoom}
+						textAnchor="middle"
+						fontSize={11 / zoom}
+						fill="#777"
+						style={{ pointerEvents: "none", userSelect: "none" }}
+					>
+						{formatArea(area, units)}
+					</text>
 				</g>
 			);
-		case "room":
-			return (
-				<polygon
-					points={entity.polygon.map(([x, y]) => `${x},${y}`).join(" ")}
-					fill={isSelected ? SELECT_FILL : "rgba(0, 0, 0, 0.04)"}
-					stroke={isSelected ? SELECT_COLOR : "#666"}
-					strokeWidth={isSelected ? 2 : 1}
-					strokeDasharray={isSelected ? "none" : "6 3"}
-					onMouseDown={onMouseDown}
-					onClick={onClick}
-					className="cursor-pointer"
-				>
-					<title>{entity.name}</title>
-				</polygon>
-			);
+		}
 		case "door": {
 			const doorW = entity.width;
 			const isSliding = entity.doorStyle === "sliding";
@@ -1513,6 +1757,190 @@ function EntityRenderer({
 			);
 		}
 	}
+}
+
+// Perpendicular distance from a wall's own endpoint to the face of another
+// wall connected there (shared endpoint), so the dimension can start/end at
+// the interior corner instead of the centerline meeting point. For walls
+// crossing at angle theta, a connected wall's face (offset thickness/2 from
+// its own centerline) crosses this wall's centerline at (thickness/2)/sin(theta)
+// from the shared point — see line-intersection derivation; perpendicular
+// corners (theta=90°) reduce to the familiar thickness/2 inset.
+function wallEndInset(
+	point: { x: number; y: number },
+	dirA: { x: number; y: number },
+	walls: WallEntity[],
+	selfId: string,
+): number {
+	const EPS = 0.5;
+	let maxInset = 0;
+	for (const w of walls) {
+		if (w.id === selfId) continue;
+		const touches = (
+			[
+				[w.x1, w.y1],
+				[w.x2, w.y2],
+			] as [number, number][]
+		).some(([ex, ey]) => Math.hypot(ex - point.x, ey - point.y) < EPS);
+		if (!touches) continue;
+
+		const bdx = w.x2 - w.x1;
+		const bdy = w.y2 - w.y1;
+		const blen = Math.hypot(bdx, bdy) || 1;
+		const dirB = { x: bdx / blen, y: bdy / blen };
+		const sinTheta = Math.abs(dirA.x * dirB.y - dirA.y * dirB.x);
+		if (sinTheta < 0.05) continue; // near-parallel — straight run, not a corner
+		const inset = w.thickness / 2 / sinTheta;
+		if (inset > maxInset) maxInset = inset;
+	}
+	return maxInset;
+}
+
+// ponytail: dimension always offsets to the same fixed side of the wall
+// (no room-interior detection), so on some walls it lands inside the room
+// instead of outside; upgrade path is testing offset points against room
+// polygons and flipping the side when the offset point is contained.
+// ponytail: at a T-junction picks the thickest connected wall for the
+// inset, not necessarily the one that actually bounds this wall's room;
+// a full fix needs the room polygon each wall borders.
+function WallDimensionLine({
+	wall,
+	allWalls,
+	buildingCenter,
+	units,
+	zoom,
+}: {
+	wall: WallEntity;
+	allWalls: WallEntity[];
+	buildingCenter: { x: number; y: number };
+	units: string;
+	zoom: number;
+}) {
+	const length = distance(
+		{ x: wall.x1, y: wall.y1 },
+		{ x: wall.x2, y: wall.y2 },
+	);
+	if (length < 1) return null;
+
+	const dx = wall.x2 - wall.x1;
+	const dy = wall.y2 - wall.y1;
+	const ux = dx / length;
+	const uy = dy / length;
+	let perpX = -uy;
+	let perpY = ux;
+	// Point the dimension outward (away from the building's rough center)
+	// instead of always turning the same way relative to how the wall was
+	// drawn — otherwise two walls at a corner can both offset toward the
+	// same side and their dimension chains overlap/hide each other.
+	const wallMidX = (wall.x1 + wall.x2) / 2;
+	const wallMidY = (wall.y1 + wall.y2) / 2;
+	const outX = wallMidX - buildingCenter.x;
+	const outY = wallMidY - buildingCenter.y;
+	if (perpX * outX + perpY * outY < 0) {
+		perpX = -perpX;
+		perpY = -perpY;
+	}
+
+	// Inset each end by the connected wall's face so the shown dimension is
+	// the interior clear span, not the centerline-to-centerline length.
+	const insetStart = Math.min(
+		wallEndInset(
+			{ x: wall.x1, y: wall.y1 },
+			{ x: ux, y: uy },
+			allWalls,
+			wall.id,
+		),
+		length / 2,
+	);
+	const insetEnd = Math.min(
+		wallEndInset(
+			{ x: wall.x2, y: wall.y2 },
+			{ x: ux, y: uy },
+			allWalls,
+			wall.id,
+		),
+		length / 2,
+	);
+	const clearLength = Math.max(length - insetStart - insetEnd, 0);
+	if (clearLength < 1) return null;
+	const label = formatLength(clearLength, units);
+
+	const start = { x: wall.x1 + ux * insetStart, y: wall.y1 + uy * insetStart };
+	const end = { x: wall.x2 - ux * insetEnd, y: wall.y2 - uy * insetEnd };
+
+	const faceOffset = wall.thickness / 2;
+	const lineOffset = faceOffset + 24 / zoom;
+	const extendPast = 4 / zoom;
+	const tickLen = 6 / zoom;
+	const sw = 1 / zoom;
+
+	const p1 = {
+		x: start.x + perpX * lineOffset,
+		y: start.y + perpY * lineOffset,
+	};
+	const p2 = {
+		x: end.x + perpX * lineOffset,
+		y: end.y + perpY * lineOffset,
+	};
+
+	function extensionLine(x: number, y: number) {
+		return {
+			x1: x + perpX * faceOffset,
+			y1: y + perpY * faceOffset,
+			x2: x + perpX * (lineOffset + extendPast),
+			y2: y + perpY * (lineOffset + extendPast),
+		};
+	}
+	const e1 = extensionLine(start.x, start.y);
+	const e2 = extensionLine(end.x, end.y);
+
+	function tick(cx: number, cy: number) {
+		const hx = (ux + perpX) * (tickLen / 2);
+		const hy = (uy + perpY) * (tickLen / 2);
+		return { x1: cx - hx, y1: cy - hy, x2: cx + hx, y2: cy + hy };
+	}
+	const t1 = tick(p1.x, p1.y);
+	const t2 = tick(p2.x, p2.y);
+
+	const midX = (p1.x + p2.x) / 2;
+	const midY = (p1.y + p2.y) / 2;
+	let angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+	if (angle > 90 || angle < -90) angle += 180;
+
+	const fontSize = 10 / zoom;
+	const labelW = label.length * fontSize * 0.62;
+
+	return (
+		<g stroke="#555" style={{ pointerEvents: "none", userSelect: "none" }}>
+			<line x1={e1.x1} y1={e1.y1} x2={e1.x2} y2={e1.y2} strokeWidth={sw} />
+			<line x1={e2.x1} y1={e2.y1} x2={e2.x2} y2={e2.y2} strokeWidth={sw} />
+			<line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} strokeWidth={sw} />
+			<line x1={t1.x1} y1={t1.y1} x2={t1.x2} y2={t1.y2} strokeWidth={sw} />
+			<line x1={t2.x1} y1={t2.y1} x2={t2.x2} y2={t2.y2} strokeWidth={sw} />
+			<rect
+				x={midX - labelW / 2}
+				y={midY - fontSize * 0.75}
+				width={labelW}
+				height={fontSize * 1.5}
+				fill="white"
+				stroke="none"
+				transform={`rotate(${angle}, ${midX}, ${midY})`}
+			/>
+			<text
+				x={midX}
+				y={midY}
+				textAnchor="middle"
+				dominantBaseline="middle"
+				fontSize={fontSize}
+				fill="#333"
+				fontWeight={500}
+				stroke="none"
+				transform={`rotate(${angle}, ${midX}, ${midY})`}
+			>
+				{label}
+			</text>
+		</g>
+	);
 }
 
 function MeasureOverlay({

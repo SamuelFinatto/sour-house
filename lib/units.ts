@@ -1,3 +1,21 @@
+const METERS_PER_UNIT: Record<string, number> = {
+	cm: 0.01,
+	mm: 0.001,
+	m: 1,
+	in: 0.0254,
+	ft: 0.3048,
+};
+
+/** Convert a raw canvas-unit value to meters for editing/display. */
+export function toMeters(value: number, units: string): number {
+	return value * (METERS_PER_UNIT[units] ?? 1);
+}
+
+/** Convert a meters value back to the floor's raw canvas unit. */
+export function fromMeters(value: number, units: string): number {
+	return value / (METERS_PER_UNIT[units] ?? 1);
+}
+
 /**
  * Format an area value (in unit²) for display.
  * Canvas coordinates are in the floor's base unit (cm, mm, m, in, ft).

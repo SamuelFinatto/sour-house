@@ -327,6 +327,7 @@ export function FloorEditor({ projectId, floorId }: FloorEditorProps) {
 						snapEnabled={editor.state.snapEnabled}
 						gridSize={floor.grid.size}
 						selectedEntityIds={editor.state.selectedEntityIds}
+						units={floor.units}
 						underlay={floor.underlay}
 						underlayUrl={
 							floor.underlay
