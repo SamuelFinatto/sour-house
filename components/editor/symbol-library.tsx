@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useSymbols } from "@/hooks/use-symbols";
+import { apiUrl } from "@/lib/api";
 import type { Entity } from "@/types/entities";
 import type { FloorSymbol } from "@/types/symbol";
 
@@ -70,7 +71,7 @@ export function SymbolLibrary({
 		if (!saveName.trim() || selectedEntities.length === 0) return;
 		setSaving(true);
 		try {
-			const res = await fetch("/api/symbols", {
+			const res = await fetch(apiUrl("/api/symbols"), {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
@@ -93,7 +94,7 @@ export function SymbolLibrary({
 
 	async function handleDelete() {
 		if (!deleteId) return;
-		await fetch(`/api/symbols/${deleteId}`, { method: "DELETE" });
+		await fetch(apiUrl(`/api/symbols/${deleteId}`), { method: "DELETE" });
 		mutate();
 		setDeleteId(null);
 		toast.success("Symbol deleted");

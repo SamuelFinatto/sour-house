@@ -1,9 +1,8 @@
 "use client";
 
 import useSWR from "swr";
+import { fetcher } from "@/lib/api";
 import type { FloorSymbol } from "@/types/symbol";
-
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export function useSymbols() {
 	const { data, error, isLoading, mutate } = useSWR<FloorSymbol[]>(

@@ -31,8 +31,7 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProject } from "@/hooks/use-project";
-
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+import { apiUrl, fetcher } from "@/lib/api";
 
 interface FloorListProps {
 	projectId: string;
@@ -61,7 +60,7 @@ export function FloorList({ projectId }: FloorListProps) {
 		name: string;
 		elevationCm: number;
 	}) {
-		await fetch(`/api/projects/${projectId}/floors`, {
+		await fetch(apiUrl(`/api/projects/${projectId}/floors`), {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify(floor),
@@ -71,7 +70,7 @@ export function FloorList({ projectId }: FloorListProps) {
 	}
 
 	async function handleDeleteFloor(floorId: string) {
-		await fetch(`/api/projects/${projectId}/floors/${floorId}`, {
+		await fetch(apiUrl(`/api/projects/${projectId}/floors/${floorId}`), {
 			method: "DELETE",
 		});
 		mutate();
@@ -89,11 +88,14 @@ export function FloorList({ projectId }: FloorListProps) {
 			.replace(/[^a-z0-9]+/g, "-")
 			.replace(/^-|-$/g, "");
 		if (!newId) return;
-		const res = await fetch(`/api/projects/${projectId}/floors/${floorId}`, {
-			method: "PUT",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ name, newId }),
-		});
+		const res = await fetch(
+			apiUrl(`/api/projects/${projectId}/floors/${floorId}`),
+			{
+				method: "PUT",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ name, newId }),
+			},
+		);
 		if (!res.ok) {
 			toast.error("Failed to rename floor");
 			return;
@@ -106,7 +108,7 @@ export function FloorList({ projectId }: FloorListProps) {
 	async function handleMoveFloor() {
 		if (!movingFloorId || !selectedTargetProject) return;
 		const res = await fetch(
-			`/api/projects/${projectId}/floors/${movingFloorId}/move`,
+			apiUrl(`/api/projects/${projectId}/floors/${movingFloorId}/move`),
 			{
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
@@ -126,7 +128,7 @@ export function FloorList({ projectId }: FloorListProps) {
 
 	async function handleDuplicateFloor(floorId: string) {
 		const res = await fetch(
-			`/api/projects/${projectId}/floors/${floorId}/duplicate`,
+			apiUrl(`/api/projects/${projectId}/floors/${floorId}/duplicate`),
 			{ method: "POST" },
 		);
 		if (!res.ok) {
@@ -147,7 +149,7 @@ export function FloorList({ projectId }: FloorListProps) {
 			.replace(/^-|-$/g, "");
 		if (!newId) return;
 
-		const res = await fetch(`/api/projects/${projectId}`, {
+		const res = await fetch(apiUrl(`/api/projects/${projectId}`), {
 			method: "PUT",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ name, newId }),
@@ -165,7 +167,7 @@ export function FloorList({ projectId }: FloorListProps) {
 	}
 
 	async function handleExportProject() {
-		const res = await fetch(`/api/projects/${projectId}/export`);
+		const res = await fetch(apiUrl(`/api/projects/${projectId}/export`));
 		if (!res.ok) {
 			toast.error("Failed to export project");
 			return;
@@ -197,7 +199,7 @@ export function FloorList({ projectId }: FloorListProps) {
 					toast.error("Invalid floor file");
 					return;
 				}
-				const res = await fetch(`/api/projects/${projectId}/floors`, {
+				const res = await fetch(apiUrl(`/api/projects/${projectId}/floors`), {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
 					body: text,

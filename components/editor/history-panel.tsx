@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useFloorHistory } from "@/hooks/use-floor-history";
+import { apiUrl } from "@/lib/api";
 
 interface HistoryPanelProps {
 	projectId: string;
@@ -34,7 +35,7 @@ export function HistoryPanel({
 
 	async function handleRestore(version: string) {
 		const res = await fetch(
-			`/api/projects/${projectId}/floors/${floorId}/history/${version}`,
+			apiUrl(`/api/projects/${projectId}/floors/${floorId}/history/${version}`),
 			{ method: "POST" },
 		);
 		if (!res.ok) {

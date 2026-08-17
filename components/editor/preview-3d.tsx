@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import * as THREE from "three";
 import { useFloor } from "@/hooks/use-floor";
+import { apiUrl } from "@/lib/api";
 import type { Box3D, Object3D, Plane3D } from "@/lib/three-builder";
 import { buildScene3D, getSceneBBox } from "@/lib/three-builder";
 
@@ -184,11 +185,14 @@ export function Preview3D({ projectId, floorId }: Preview3DProps) {
 	const handleSave = useCallback(async () => {
 		if (!floor) return;
 		try {
-			const res = await fetch(`/api/projects/${projectId}/floors/${floorId}`, {
-				method: "PUT",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(floor),
-			});
+			const res = await fetch(
+				apiUrl(`/api/projects/${projectId}/floors/${floorId}`),
+				{
+					method: "PUT",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify(floor),
+				},
+			);
 			if (!res.ok) throw new Error("Failed to save");
 			mutate();
 			toast.success("Floor saved");

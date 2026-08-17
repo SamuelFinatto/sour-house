@@ -55,17 +55,19 @@ export default function RootLayout({
 			<body className="h-full flex flex-col">
 				{children}
 				<Toaster richColors />
-				<Script
-					id="sw-register"
-					strategy="afterInteractive"
-					dangerouslySetInnerHTML={{
-						__html: `
+				{process.env.NODE_ENV === "production" && (
+					<Script
+						id="sw-register"
+						strategy="afterInteractive"
+						dangerouslySetInnerHTML={{
+							__html: `
               if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('/sw.js');
               }
             `,
-					}}
-				/>
+						}}
+					/>
+				)}
 			</body>
 		</html>
 	);

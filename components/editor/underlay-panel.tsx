@@ -5,6 +5,7 @@ import { useRef } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { apiUrl } from "@/lib/api";
 import type { FloorUnderlay } from "@/types/floor";
 
 interface UnderlayPanelProps {
@@ -23,7 +24,7 @@ export function UnderlayPanel({
 	async function handleUpload(file: File) {
 		const formData = new FormData();
 		formData.append("file", file);
-		const res = await fetch(`/api/projects/${projectId}/assets`, {
+		const res = await fetch(apiUrl(`/api/projects/${projectId}/assets`), {
 			method: "POST",
 			body: formData,
 		});
